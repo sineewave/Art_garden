@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注意力花园 · Attention Garden</title>
+<style>
+:root{
+  --paper:#EDEAE3; --panel:#F6F3EA; --ink:#26211A;
+  --red:#C8502A; --blue:#4A7292; --mustard:#D0A63E; --moss:#6E8A58;
+  --rose:#C48CA0; --teal:#4E9A94; --violet:#8A76B4;
+  --line:rgba(38,33,26,.5); --line-soft:rgba(38,33,26,.22);
+}
+*{margin:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--paper); color:var(--ink); overflow:hidden;
+  display:flex; flex-direction:column;
+  font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; user-select:none;
+}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ---------- grain overlay ---------- */
+#grain{position:fixed;inset:0;pointer-events:none;z-index:97;opacity:.5;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .15 0 0 0 0 .13 0 0 0 0 .10 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:center;gap:16px;padding:9px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;position:relative;z-index:20}
+.brand{line-height:1.2}
+.brand .zh{font-family:"Songti SC","Noto Serif SC","Noto Serif CJK SC",serif;font-weight:700;font-size:17px;letter-spacing:5px}
+.brand .en{font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:2.6px;opacity:.55}
+nav{display:flex;gap:4px;margin-left:6px}
+.tab{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1.4px;padding:6px 12px;
+  border:1px solid transparent;cursor:pointer;opacity:.5;background:none;color:var(--ink)}
+.tab i{display:inline-block;width:7px;height:7px;margin-right:7px;vertical-align:0}
+.tab.on{opacity:1;border:1px solid var(--line);background:rgba(255,255,255,.45)}
+.tab:hover{opacity:.85}
+.stats{margin-left:auto;display:flex;gap:15px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.5px;opacity:.85;flex-wrap:wrap}
+.stats b{font-weight:700}
+
+/* ---------- stage ---------- */
+main{flex:1;position:relative;min-height:0}
+.page{position:absolute;inset:0}
+.page.hidden{display:none}
+canvas.stage{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+.corner{position:absolute;pointer-events:none;font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:2.4px;opacity:.5;z-index:3}
+.legend{position:absolute;left:14px;bottom:10px;display:flex;gap:13px;align-items:center;pointer-events:none;
+  font-family:ui-monospace,Menlo,monospace;font-size:9.5px;flex-wrap:wrap;z-index:3}
+.legend i{width:10px;height:10px;border-radius:50%;border:1.7px solid;display:inline-block;margin-right:5px;vertical-align:-1px}
+
+/* ---------- floating cards ---------- */
+.card{position:absolute;right:14px;bottom:14px;width:248px;background:var(--panel);border:1px solid var(--ink);
+  padding:11px 13px 13px;box-shadow:4px 4px 0 rgba(38,33,26,.14);display:none;z-index:30}
+.card.on{display:block}
+.card h4{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:2px;margin-bottom:8px;padding-right:20px}
+.krow{display:flex;justify-content:space-between;gap:8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;
+  padding:3.5px 0;border-bottom:1px dashed rgba(38,33,26,.2)}
+.krow span:first-child{opacity:.5;white-space:nowrap}
+.krow span:last-child{text-align:right}
+.close{position:absolute;right:9px;top:7px;cursor:pointer;font-family:ui-monospace,monospace;font-size:11px;opacity:.55;pointer-events:auto}
+.close:hover{opacity:1}
+.cardAct{margin-top:10px;display:flex;gap:8px}
+.swatch{display:inline-block;width:9px;height:9px;border:1px solid var(--line);vertical-align:-1px;margin-right:3px}
+
+.toolbar{position:absolute;left:14px;top:14px;display:flex;gap:8px;z-index:25;flex-wrap:wrap}
+.btn{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1.2px;padding:6px 12px;
+  border:1px solid var(--ink);background:var(--panel);color:var(--ink);cursor:pointer;box-shadow:2.5px 2.5px 0 rgba(38,33,26,.22)}
+.btn:active{transform:translate(2px,2px);box-shadow:none}
+.btn.on{background:var(--ink);color:var(--paper)}
+.btn.small{padding:5px 10px;font-size:9px}
+
+/* ---------- depth gauge (garden) ---------- */
+#depthHud{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:8;pointer-events:none;
+  display:flex;flex-direction:column;align-items:flex-end;gap:5px;
+  font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:1.5px;text-align:right}
+#depthHud .dRail{width:3px;height:132px;border:1px solid var(--line);background:rgba(255,255,255,.4);position:relative;margin-right:3px}
+#depthHud .dRail i{position:absolute;left:0;right:0;height:9px;background:var(--ink)}
+#depthHud .dVal{opacity:.75}
+#depthHud .dLayer{opacity:.5;max-width:130px;letter-spacing:1px}
+
+/* ---------- seed shelf (garden) ---------- */
+#shelf{position:absolute;left:14px;bottom:14px;z-index:26;max-width:min(66vw,560px)}
+#shelf .shelfHead{font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:2px;opacity:.55;margin-bottom:5px}
+#shelfRow{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.seedCard{flex:0 0 auto;width:64px;background:var(--panel);border:1px solid var(--ink);cursor:pointer;
+  box-shadow:2.5px 2.5px 0 rgba(38,33,26,.18);padding:5px 5px 4px;position:relative}
+.seedCard:active{transform:translate(2px,2px);box-shadow:none}
+.seedCard.sel{background:var(--ink);color:var(--paper)}
+.seedCard canvas{width:100%;height:40px;display:block;border:1px solid var(--line-soft);image-rendering:pixelated;background:#fff}
+.seedCard .sn{font-family:ui-monospace,Menlo,monospace;font-size:7.5px;letter-spacing:.5px;margin-top:4px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seedCard .ct{position:absolute;right:-5px;top:-6px;background:var(--red);color:#fff;font-family:ui-monospace,monospace;
+  font-size:8px;min-width:15px;height:15px;line-height:15px;text-align:center;border:1px solid var(--ink)}
+
+/* ---------- footer ---------- */
+footer{display:flex;align-items:center;gap:12px;padding:8px 16px;border-top:1px solid var(--line);position:relative;z-index:20}
+.meterWrap{display:flex;align-items:center;gap:9px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.5px}
+.meter{width:150px;height:9px;border:1px solid var(--ink);position:relative;background:rgba(255,255,255,.4)}
+.meter i{position:absolute;left:0;top:0;bottom:0;background:var(--mustard);transition:background .3s}
+.meter.low i{background:var(--red)}
+#hint{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;opacity:.55;margin-left:auto;text-align:right;letter-spacing:.4px}
+
+/* ---------- intro / toast ---------- */
+#intro{position:fixed;inset:0;background:rgba(237,234,227,.97);display:flex;align-items:center;justify-content:center;z-index:120;padding:20px}
+.introBox{max-width:560px;background:var(--panel);border:1px solid var(--ink);box-shadow:7px 7px 0 rgba(38,33,26,.14);padding:34px 36px 30px;position:relative}
+.introBox h1{font-family:"Songti SC","Noto Serif SC",serif;font-size:33px;letter-spacing:11px;font-weight:700;margin-bottom:4px}
+.introBox .sub{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:3px;opacity:.55;margin-bottom:18px}
+.introBox p{font-size:12.5px;line-height:1.85;opacity:.85;margin-bottom:14px}
+.introRow{display:flex;gap:10px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;line-height:1.7;margin-bottom:5px}
+.introRow b{flex:0 0 118px;letter-spacing:1px}
+#enter{margin-top:20px;width:100%;padding:10px}
+.introStamp{position:absolute;right:22px;top:22px;width:44px;height:44px;border:1.5px solid var(--red);border-radius:50%;
+  color:var(--red);font-family:ui-monospace,monospace;font-size:7px;letter-spacing:1px;display:flex;align-items:center;justify-content:center;
+  transform:rotate(12deg);opacity:.7;text-align:center;line-height:1.5}
+.toastWrap{position:fixed;left:50%;bottom:56px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:130;pointer-events:none;align-items:center}
+.toast{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1px;background:var(--ink);color:var(--paper);
+  padding:6px 13px;animation:tIn .25s ease, tOut .5s ease 3s forwards;white-space:nowrap}
+@keyframes tIn{from{opacity:0;transform:translateY(8px)}to{opacity:1}}
+@keyframes tOut{to{opacity:0;transform:translateY(-6px)}}
+@media (max-width:760px){ .stats{display:none} .brand .zh{font-size:15px;letter-spacing:3px} .meter{width:100px} #shelf{max-width:78vw} #depthHud{display:none} }
+@media (prefers-reduced-motion: reduce){ .toast{animation:none} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="zh">注意力花园</div>
+    <div class="en">ATTENTION&nbsp;GARDEN · SYNTHETIC&nbsp;ECOLOGY</div>
+  </div>
+  <nav>
+    <button class="tab on" id="tabBloom"><i style="background:var(--blue)"></i>Ⅰ 信息爆炸 BLOOM</button>
+    <button class="tab" id="tabGarden"><i style="background:var(--moss)"></i>Ⅱ 注意力花园 GARDEN</button>
+  </nav>
+  <div class="stats">
+    <span>已生成 <b id="stGen">0</b></span>
+    <span>迁入花园 <b id="stMig">0</b></span>
+    <span>数字残骸 <b id="stDeb">0</b></span>
+    <span>能耗 <b id="stEng">0.0</b> Wh · <b id="stPow">0</b> W</span>
+  </div>
+</header>
+
+<main>
+  <!-- Ⅰ information bloom -->
+  <section class="page" id="pageBloom">
+    <canvas class="stage" id="cBloom" aria-label="信息爆炸画布"></canvas>
+    <div class="corner" style="left:14px;top:14px">INFORMATION&nbsp;BLOOM／信息爆炸 — 无限生成的信息流</div>
+    <div class="toolbar" style="top:36px">
+      <button class="btn" id="btnStorm">信息风暴 STORM</button>
+    </div>
+    <div class="legend" id="legBloom"></div>
+    <div class="card" id="cardB">
+      <span class="close" data-close="cardB">✕</span>
+      <h4 id="cbTitle">OB-0000</h4>
+      <div id="cbRows"></div>
+      <div class="cardAct"><button class="btn small" id="cbCollect">✚ 收藏为种子 COLLECT</button></div>
+    </div>
+  </section>
+
+  <!-- Ⅱ synthetic garden -->
+  <section class="page hidden" id="pageGarden">
+    <canvas class="stage" id="cGarden" aria-label="注意力花园画布"></canvas>
+    <div class="corner" style="left:14px;top:14px">SYNTHETIC&nbsp;GARDEN／人工花园 — 注意力是唯一的养分</div>
+    <div class="toolbar" style="top:36px">
+      <button class="btn" id="btnSow">随机播种 SOW</button>
+      <button class="btn" id="btnSurface">↑ 地表 SURFACE</button>
+      <button class="btn" id="btnRoots">↓ 根系 ROOTS</button>
+      <button class="btn" id="btnLapse">时光 ×4 LAPSE</button>
+    </div>
+    <div id="depthHud">
+      <div class="dVal" id="dVal">0 m</div>
+      <div class="dRail"><i id="dCursor" style="top:0"></i></div>
+      <div class="dLayer" id="dLayer">地表 · 花园</div>
+    </div>
+    <div id="shelf">
+      <div class="shelfHead">种子架 SEED SHELF — 点选种子 · 再点击土壤播种</div>
+      <div id="shelfRow"></div>
+    </div>
+    <div class="card" id="cardG">
+      <span class="close" data-close="cardG">✕</span>
+      <h4 id="cgTitle">PL-0000 · 物种档案</h4>
+      <div id="cgRows"></div>
+    </div>
+    <div class="card" id="cardN">
+      <span class="close" data-close="cardN">✕</span>
+      <h4 id="cnTitle">NODE · 代谢档案</h4>
+      <div id="cnRows"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="meterWrap">
+    <span>你的注意力 ATTENTION</span>
+    <div class="meter" id="meter"><i id="meterFill" style="width:100%"></i></div>
+    <span id="meterNum">100</span>
+  </div>
+  <div id="hint"></div>
+</footer>
+
+<div id="intro">
+  <div class="introBox">
+    <div class="introStamp">SYNTH<br>ECO·26</div>
+    <h1>注意力花园</h1>
+    <div class="sub">ATTENTION GARDEN — AN ARTIFICIAL ECOLOGY OF GENERATED CONTENT</div>
+    <p>生成对象作为“种子”不断涌入信息流。你的注视是它们唯一的养分：被看见的成长、分枝、结籽、形成潮流；无人问津的沉入数字残骸。花园之下，一套由采集、传输、缓存、计算与能源构成的代谢根系持续运转。你的注意力是有限的。</p>
+    <div class="introRow"><b>Ⅰ 信息爆炸</b><span>拖拽平移 · 滚轮缩放 · 悬停注视喂养 · 点击收藏为种子</span></div>
+    <div class="introRow"><b>Ⅱ 注意力花园</b><span>选种点土播种 · 悬停浇灌 · 同种聚集将形成「潮流」引来蝴蝶</span></div>
+    <div class="introRow"><b>Ⅲ 地下代谢</b><span>滚轮下潜根系 — 采集→传输→缓存→计算→能源 · 点击节点看档案</span></div>
+    <button class="btn" id="enter">进入生态系统 ENTER</button>
+  </div>
+</div>
+<div class="toastWrap" id="toasts"></div>
+<div id="grain"></div>
+
+<script src="assets/manifest.js"></script>
+<script>
+'use strict';
+window.addEventListener('error',e=>{ document.title='ERR: '+e.message+' @'+(e.lineno||0);
+  console.error('FATAL',e.message,e.filename,e.lineno); });
+/* ============================================================
+   注意力花园 Attention Garden — v2
+   ------------------------------------------------------------
+   接入真实图片（下一步爬取的数据）：
+   方式 A：编辑 assets/manifest.js，向 ATTENTION_GARDEN_IMAGES 填入图片路径；
+   方式 B：直接向 CONFIG.images 填入 URL。
+   两页会自动把真实图片用作信息流对象与花朵中心。
+   若图片跨域受限，将回退为内置生成纹样。
+   ============================================================ */
+const CONFIG = {
+  images: (typeof window!=='undefined' && window.ATTENTION_GARDEN_IMAGES) || [],
+  spawnMs: 340,          // 信息流生成间隔
+  maxLive: 250,          // 信息流同屏最大对象
+  maxPlants: 46,         // 花园最大植株
+  speciesCap: 9          // 单一物种最大数量（群落上限）
+};
+const Q = new URLSearchParams(location.search);
+
+/* ---------------- utilities ---------------- */
+const R=(a,b)=>a+Math.random()*(b-a);
+const RI=(a,b)=>Math.floor(R(a,b+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const easeOut=t=>1-Math.pow(1-clamp(t,0,1),3);
+const pad=n=>String(n).padStart(4,'0');
+const fmtT=ts=>new Date(ts).toLocaleTimeString('zh-CN',{hour12:false});
+function mulberry(seed){ let s=seed>>>0; return ()=>{ s|=0; s=(s+0x6D2B79F5)|0;
+  let t=Math.imul(s^(s>>>15),1|s); t=(t+Math.imul(t^(t>>>7),61|t))^t;
+  return ((t^(t>>>14))>>>0)/4294967296; }; }
+function hex2rgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function mixHex(a,b,t){const A=hex2rgb(a),B=hex2rgb(b);
+  return `rgb(${Math.round(lerp(A[0],B[0],t))},${Math.round(lerp(A[1],B[1],t))},${Math.round(lerp(A[2],B[2],t))})`;}
+function hexA(h,a){const c=hex2rgb(h);return `rgba(${c[0]},${c[1]},${c[2]},${a})`;}
+
+const INK='#26211A', PAPER='#EDEAE3';
+const PALS=[
+  ['#C8502A','#E8B84B','#F0E6D4'], ['#4A7292','#9FBFD0','#EAE8DE'],
+  ['#C48CA0','#8A4A5E','#F0E4E0'], ['#6E8A58','#B9C98A','#ECEADB'],
+  ['#4E9A94','#20565A','#E6ECE2'], ['#D0A63E','#8A6A22','#F0E9D5'],
+  ['#8A76B4','#4E4470','#EAE6EF']
+];
+const PAL_CN=['赭','蓝','玫','苔','汐','芥','堇'];
+const TYPES=[
+  {id:'image', zh:'图像',   en:'IMAGE', color:'#4A7292', gen:0.08, tick:0.010, w:.55},
+  {id:'video', zh:'视频',   en:'VIDEO', color:'#C8502A', gen:0.65, tick:0.045, w:.30},
+  {id:'multi', zh:'多模态', en:'MULTI', color:'#B08A2E', gen:1.10, tick:0.075, w:.15}
+];
+function pickType(){const r=Math.random();let a=0;for(const t of TYPES){a+=t.w;if(r<a)return t;}return TYPES[0];}
+const MODELS={image:['DIFF·3','PIX-α','LATENT-S'],video:['VIDGEN·2','FRAME-X','MOTION-β'],multi:['MMX·1','OMNI-S','FUSION-γ']};
+
+/* ---------------- shared state ---------------- */
+const S={att:100, energy:0, power:38, generated:0, migrated:0, debris:0,
+         itemSeq:0, plantSeq:0, queue:[]};
+let activePage='bloom';
+
+/* ---------------- real image pool (optional) ---------------- */
+const IMG_POOL=[];
+CONFIG.images.forEach(src=>{
+  const im=new Image(); im.crossOrigin='anonymous';
+  im.onload=()=>IMG_POOL.push(im); im.src=src;
+});
+
+/* ============================================================
+   procedural artworks — 参考图的九种视觉语言
+   每件作品 112×112，附带风格 id / 调色板 / 名称 → 决定花的物种
+   ============================================================ */
+const ASZ=112;
+function grain(ctx,n,alpha){ ctx.globalAlpha=alpha; ctx.fillStyle=INK;
+  for(let i=0;i<n;i++)ctx.fillRect(R(0,ASZ),R(0,ASZ),1,1); ctx.globalAlpha=1; }
+
+function gStitch(ctx,pal){ // 十字绣像素花（ref: 电脑窗口里的十字绣）
+  const g=8,n=14;
+  ctx.fillStyle=pal[2]; ctx.fillRect(0,0,ASZ,ASZ);
+  ctx.fillStyle='rgba(38,33,26,.10)';
+  for(let i=0;i<=n;i++)for(let j=0;j<=n;j++)ctx.fillRect(i*g,j*g,1,1);
+  const cell=(cx,cy)=>ctx.fillRect(cx*g+1,cy*g+1,g-2,g-2);
+  const cx=RI(5,8),cy=RI(4,6);
+  ctx.fillStyle=pal[0];
+  [[0,-2],[0,-1],[0,1],[0,2],[-2,0],[-1,0],[1,0],[2,0],[-1,-1],[1,-1],[-1,1],[1,1]].forEach(p=>cell(cx+p[0],cy+p[1]));
+  ctx.fillStyle=pal[1]; cell(cx,cy); cell(cx-2,cy-2); cell(cx+2,cy-2); cell(cx-2,cy+2); cell(cx+2,cy+2);
+  ctx.fillStyle='#55744A';
+  for(let y=cy+3;y<n;y++)cell(cx,y);
+  cell(cx-1,cy+4); if(cx+2<n)cell(cx+1,cy+5);
+  ctx.fillStyle=pal[0]; cell(RI(0,2),RI(9,12)); cell(RI(10,12),RI(0,3));
+}
+function gSpiral(ctx,pal){ // 文字漩涡（ref: 字母拼贴螺旋）
+  ctx.fillStyle='#F6F3EA'; ctx.fillRect(0,0,ASZ,ASZ);
+  const msg='ATTENTIONSEENLOOKGROWN注意看我生长可见流量'.split('');
+  ctx.fillStyle=INK;
+  let a=R(0,6), r=5;
+  while(r<66){
+    const x=56+Math.cos(a)*r, y=56+Math.sin(a)*r*.92;
+    ctx.save(); ctx.translate(x,y); ctx.rotate(a+Math.PI/2);
+    ctx.font=`${clamp(4+r*.12,5,11)}px ui-monospace,Menlo,monospace`;
+    ctx.fillStyle=Math.random()<.06?pal[0]:INK;
+    ctx.fillText(pick(msg),0,0); ctx.restore();
+    a+=clamp(9/r,.12,.9); r+=.22;
+  }
+  ctx.fillStyle=pal[0]; ctx.beginPath(); ctx.arc(56,56,4,0,7); ctx.fill();
+}
+function gBlob(ctx,pal){ // 线绘细胞团（ref: Dubuffet 式粉蓝填色）
+  ctx.fillStyle='#F2E4DD'; ctx.fillRect(0,0,ASZ,ASZ);
+  const cells=RI(5,8);
+  for(let k=0;k<cells;k++){
+    const cx=R(14,98),cy=R(14,98),rr=R(12,26);
+    ctx.beginPath();
+    for(let i=0;i<=14;i++){const a2=i/14*Math.PI*2, r2=rr*(1+Math.sin(a2*3+k)*.22);
+      const x=cx+Math.cos(a2)*r2,y=cy+Math.sin(a2)*r2;
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+    ctx.closePath();
+    ctx.fillStyle=pick(['#F5D9CE','#EDE3C9','#D9E0DC',hexA(pal[0],.35),'#F2E4DD']);
+    ctx.fill(); ctx.lineWidth=2.4; ctx.strokeStyle='#5E7FA6'; ctx.stroke();
+  }
+  grain(ctx,150,.15);
+}
+function gLandscape(ctx,pal){ // 相册小照（ref: 照片时间轴）
+  const hy=RI(48,70);
+  const gr=ctx.createLinearGradient(0,0,0,hy);
+  gr.addColorStop(0,'#DCE4E6'); gr.addColorStop(1,pal[2]);
+  ctx.fillStyle=gr; ctx.fillRect(0,0,ASZ,hy);
+  ctx.fillStyle=hexA(pal[1],.85); ctx.beginPath(); ctx.arc(RI(22,90),hy-RI(14,30),RI(9,16),0,7); ctx.fill();
+  ctx.fillStyle=pal[0]; ctx.fillRect(0,hy,ASZ,ASZ-hy);
+  ctx.fillStyle='rgba(38,33,26,.35)';
+  for(let i=0;i<6;i++)ctx.fillRect(R(0,100),hy+R(5,30),R(5,18),R(2,5));
+  ctx.fillStyle='rgba(255,255,255,.5)';
+  for(let i=0;i<40;i++)ctx.fillRect(R(0,ASZ),hy+R(0,40),2,1);
+  grain(ctx,120,.12);
+}
+function gMosaic(ctx,pal){ // 织锦方格（ref: 绿色几何绣片）
+  const g=14;
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    ctx.fillStyle=(i+j)%2?pal[0]:pal[1];
+    ctx.globalAlpha=.9; ctx.fillRect(i*g,j*g,g,g);
+    ctx.globalAlpha=1; ctx.strokeStyle=hexA('#26211A',.25); ctx.strokeRect(i*g+.5,j*g+.5,g-1,g-1);
+    if((i+j)%2===0){ ctx.fillStyle=pal[2]; ctx.fillRect(i*g+5,j*g+5,4,4); }
+    else { ctx.fillStyle=hexA('#26211A',.5); ctx.fillRect(i*g+6,j*g+2,2,2); }
+  }
+  grain(ctx,200,.12);
+}
+function gHalftone(ctx,pal){ // 网点圆盘（ref: 耳朵同心圆）
+  ctx.fillStyle=pal[2]; ctx.fillRect(0,0,ASZ,ASZ);
+  for(let r=52;r>6;r-=7){
+    ctx.strokeStyle=r%14<7?hexA(pal[0],.8):hexA('#26211A',.55);
+    ctx.lineWidth=r%21<7?2.4:1.1;
+    ctx.beginPath(); ctx.arc(56,56,r,0,7); ctx.stroke();
+  }
+  ctx.fillStyle=pal[1]; ctx.beginPath(); ctx.arc(56,56,7,0,7); ctx.fill();
+  ctx.fillStyle=pal[0];
+  for(let i=0;i<9;i++){ const a=R(0,7),rr=R(20,50);
+    ctx.fillRect(56+Math.cos(a)*rr-1.5,56+Math.sin(a)*rr-1.5,3,3); }
+}
+function gBotanic(ctx,pal){ // 剪纸花卉（ref: 纸艺花卉包装）
+  ctx.fillStyle=hexA(pal[1],.28); ctx.fillRect(0,0,ASZ,ASZ);
+  const cx=56, cy=52;
+  ctx.fillStyle=pal[0];
+  for(let k=0;k<6;k++){ const a=k/6*Math.PI*2+.5;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
+    ctx.beginPath(); ctx.ellipse(0,-20,10,20,0,0,7); ctx.fill(); ctx.restore(); }
+  ctx.fillStyle=pal[2]; ctx.beginPath(); ctx.arc(cx,cy,9,0,7); ctx.fill();
+  ctx.strokeStyle='#55744A'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(cx,cy+18); ctx.quadraticCurveTo(cx-6,cy+38,cx-2,ASZ); ctx.stroke();
+  ctx.fillStyle='#6E8A58'; ctx.beginPath(); ctx.ellipse(cx-12,cy+34,10,4,-.6,0,7); ctx.fill();
+  grain(ctx,100,.1);
+}
+function gBars(ctx,pal){ // 层叠色条（ref: 画册横条拼贴）
+  ctx.fillStyle=pal[2]; ctx.fillRect(0,0,ASZ,ASZ);
+  let y=0;
+  while(y<ASZ){ const h=RI(4,16);
+    ctx.fillStyle=pick([pal[0],pal[1],INK,pal[0]]);
+    ctx.globalAlpha=R(.5,1); ctx.fillRect(R(-8,4),y,R(70,120),h); y+=h+RI(2,6); }
+  ctx.globalAlpha=1; grain(ctx,80,.1);
+}
+function gPebble(ctx,pal){ // 卵石标本（ref: 碎石上的黑白石块）
+  ctx.fillStyle='#D8D4C8'; ctx.fillRect(0,0,ASZ,ASZ);
+  for(let i=0;i<330;i++){ ctx.fillStyle=pick(['#C4BCA8','#AEB4B0',hexA(pal[0],.5),'#8E9488']);
+    ctx.fillRect(R(0,ASZ),R(0,ASZ),2.5,2.5); }
+  const st=(x,y,r,c)=>{ ctx.beginPath();
+    for(let i=0;i<=16;i++){const a=i/16*Math.PI*2, rr=r*(1+Math.sin(a*2.4+x)*.14);
+      i?ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr*.8):ctx.moveTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr*.8);}
+    ctx.closePath(); ctx.fillStyle=c; ctx.fill();
+    ctx.strokeStyle='rgba(38,33,26,.4)'; ctx.lineWidth=1.2; ctx.stroke(); };
+  st(R(30,50),R(40,60),R(16,22),'#2A2622'); st(R(66,86),R(50,70),R(12,18),'#EFEBE2');
+  grain(ctx,60,.08);
+}
+const ART_STYLES=[
+  {id:'stitch', fn:gStitch,  w:.17}, {id:'spiral', fn:gSpiral, w:.12},
+  {id:'blob',   fn:gBlob,    w:.12}, {id:'photo',  fn:gLandscape, w:.15},
+  {id:'mosaic', fn:gMosaic,  w:.10}, {id:'ring',   fn:gHalftone, w:.10},
+  {id:'botanic',fn:gBotanic, w:.12}, {id:'bars',   fn:gBars,   w:.07},
+  {id:'pebble', fn:gPebble,  w:.05}
+];
+const NAME_A=['雾','晨','霓','蓝','燃','浮','静','回声','像素','折叠','丝绒','玻璃','低语','热带','复写','余温'];
+const NAME_B=['之花','切片','讯号','拼贴','标本','日志','花期','残影','频道','风暴','绒球','纹样'];
+function artTitle(styleId){
+  return pick(NAME_A)+pick(NAME_B)+' · '+styleId.toUpperCase().slice(0,4)+'-'+RI(10,99);
+}
+function pickStyle(){ const r=Math.random(); let a=0;
+  for(const s of ART_STYLES){a+=s.w; if(r<a)return s;} return ART_STYLES[0]; }
+
+function makeArt(){
+  const c=document.createElement('canvas'); c.width=c.height=ASZ;
+  const ctx=c.getContext('2d');
+  if(IMG_POOL.length && Math.random()<0.88){
+    const im=pick(IMG_POOL);
+    const s=Math.max(ASZ/im.width,ASZ/im.height), w=im.width*s, h=im.height*s;
+    ctx.drawImage(im,(ASZ-w)/2,(ASZ-h)/2,w,h);
+    let palIdx=RI(0,PALS.length-1);
+    try{ // 主色→最近调色板
+      const d=ctx.getImageData(0,0,8,8).data; let rr=0,gg=0,bb=0;
+      for(let i=0;i<d.length;i+=4){rr+=d[i];gg+=d[i+1];bb+=d[i+2];}
+      const n=d.length/4; rr/=n;gg/=n;bb/=n;
+      let bd=1e9; PALS.forEach((p,i)=>{const c2=hex2rgb(p[0]);
+        const dd=(c2[0]-rr)**2+(c2[1]-gg)**2+(c2[2]-bb)**2; if(dd<bd){bd=dd;palIdx=i;}});
+    }catch(e){}
+    return {cv:c, style:'photo', palIdx, title:artTitle('photo')};
+  }
+  const st=pickStyle(), palIdx=RI(0,PALS.length-1);
+  st.fn(ctx,PALS[palIdx]);
+  return {cv:c, style:st.id, palIdx, title:artTitle(st.id)};
+}
+
+/* ---------------- DOM helpers ---------------- */
+const $=id=>document.getElementById(id);
+function toast(msg){ const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
+  $('toasts').appendChild(d); setTimeout(()=>d.remove(),3700); }
+function rows(el,pairs){ el.innerHTML=pairs.map(p=>`<div class="krow"><span>${p[0]}</span><span>${p[1]}</span></div>`).join(''); }
+document.querySelectorAll('.close').forEach(x=>x.onclick=()=>{ $(x.dataset.close).classList.remove('on');
+  if(x.dataset.close==='cardB')B.sel=null;
+  if(x.dataset.close==='cardG')G.sel=null;
+  if(x.dataset.close==='cardN')G.selNode=null; });
+
+function fit(cv){ const r=cv.parentElement.getBoundingClientRect(), d=window.devicePixelRatio||1;
+  cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d);
+  const ctx=cv.getContext('2d'); ctx.setTransform(d,0,0,d,0,0);
+  cv._w=r.width; cv._h=r.height; return ctx; }
+const cB=$('cBloom'), cG=$('cGarden');
+let xB=fit(cB), xG=fit(cG);
+window.addEventListener('resize',()=>{ xB=fit(cB); xG=fit(cG); });
+
+function wobble(ctx,x,y,r,seed,amp){
+  ctx.beginPath();
+  for(let i=0;i<=26;i++){ const a=i/26*Math.PI*2;
+    const rr=r+Math.sin(a*3+seed)*amp+Math.sin(a*7+seed*2.3)*amp*.5;
+    i?ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr):ctx.moveTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); }
+  ctx.closePath();
+}
+
+/* ============================================================
+   PAGE Ⅰ — INFORMATION BLOOM 信息爆炸
+   ============================================================ */
+const B={cam:{x:0,y:0,z:1}, items:[], links:[], specks:[], blobs:[], ribbons:[],
+         spawnAcc:0, t:0, drag:null, mouse:{x:0,y:0,in:false}, sel:null, stormUntil:0};
+
+(function initBlobs(){ // 背景等高线 blob（ref: 作品分布地图）
+  const cols=['#C8502A','#4A7292','#D0A63E','#C48CA0','#4E9A94'];
+  for(let k=0;k<9;k++){
+    const cx=R(-1500,1500), cy=R(-1100,1100), rr=R(150,430), pts=[];
+    for(let i=0;i<16;i++){ const a=i/16*Math.PI*2, r2=rr*(1+Math.sin(a*2.5+k)*.28+R(-.1,.1));
+      pts.push({x:cx+Math.cos(a)*r2,y:cy+Math.sin(a)*r2*R(.7,1)}); }
+    B.blobs.push({pts, color:cols[k%cols.length]});
+  }
+})();
+(function initRibbons(){ // 漂流文字带（ref: 字母拼贴）
+  const MSGS=['看我 LOOK AT ME · 新 NEW · 更新 UPDATE · 无限生成 INFINITE · ',
+              '刷新 REFRESH · 热榜 TRENDING · 点击 CLICK · 转发 SHARE · ',
+              '被看见即存在 SEEN=ALIVE · 流量 TRAFFIC · 曝光 IMPRESSION · ',
+              '05:26 05:30 06:02 06:08 09:41 11:11 23:59 00:00 '];
+  for(let k=0;k<7;k++){
+    const msg=MSGS[k%MSGS.length].split('');
+    const cx=R(-1500,1500), cy=R(-1000,1000), rad=R(180,420), turns=R(1.2,2.2);
+    const slots=[];
+    const n=Math.floor(rad*turns*.16);
+    for(let i=0;i<n;i++){ const t=i/n, a=t*Math.PI*2*turns+k, r2=rad*(0.35+t*.65);
+      slots.push({x:cx+Math.cos(a)*r2, y:cy+Math.sin(a)*r2*.85, ang:a+Math.PI/2});
+    }
+    B.ribbons.push({slots, msg, minX:cx-rad-20, maxX:cx+rad+20, minY:cy-rad-20, maxY:cy+rad+20});
+  }
+})();
+
+function viewBounds(){ const w=cB._w,h=cB._h,z=B.cam.z;
+  return {x0:B.cam.x-w/2/z, y0:B.cam.y-h/2/z, x1:B.cam.x+w/2/z, y1:B.cam.y+h/2/z}; }
+function itemSize(it){ return 46*(0.6+Math.min(it.att,50)/50*1.1); }
+
+function spawnItem(px,py,parent){
+  if(B.items.length>=CONFIG.maxLive){
+    let idx=-1,worst=1e9;
+    B.items.forEach((it,i)=>{ if(it.state==='live'&&it.att<worst){worst=it.att;idx=i;} });
+    if(idx>=0)killItem(B.items[idx]);
+  }
+  const v=viewBounds(), m=40;
+  const type=parent?parent.type:pickType();
+  const art=parent&&Math.random()<.55?parent.art:makeArt();
+  const it={
+    id:'OB-'+pad(++S.itemSeq),
+    x: px!==undefined?px:R(v.x0-m,v.x1+m),
+    y: py!==undefined?py:R(v.y0-m,v.y1+m),
+    type, art, model:pick(MODELS[type.id]),
+    born:Date.now(), att:0, a:0, ring:0, fade:0, state:'live',
+    bred:false, gen:parent?parent.gen+1:1, seed:R(0,9), ascT:0, ph:R(0,7)
+  };
+  B.items.push(it); S.generated++; S.energy+=type.gen;
+  return it;
+}
+function killItem(it){
+  const i=B.items.indexOf(it); if(i<0)return;
+  B.items.splice(i,1);
+  for(let k=0;k<3;k++)B.specks.push({x:it.x+R(-8,8),y:it.y+R(-8,8)});
+  if(B.specks.length>1600)B.specks.splice(0,B.specks.length-1600);
+  S.debris++; if(B.sel===it){B.sel=null;$('cardB').classList.remove('on');}
+}
+
+function updateBloom(dt){
+  B.t+=dt; let drain=0;
+  B.spawnAcc+=dt*1000;
+  const storm=Date.now()<B.stormUntil;
+  const interval=storm?55:Math.max(180, CONFIG.spawnMs - B.t*2);
+  while(B.spawnAcc>interval){ B.spawnAcc-=interval; spawnItem(); }
+  // 谱系链：周期性长出带彩色连线的内容族（ref: 相册时间线）
+  B.chainAcc=(B.chainAcc||0)+dt;
+  if(B.chainAcc>3.4){ B.chainAcc=0;
+    const live=B.items.filter(i2=>i2.state==='live');
+    const root=live.length?pick(live):spawnItem();
+    const n=RI(1,3); let px=root.x, py=root.y, prev=root;
+    for(let k=0;k<n;k++){ const a=R(0,6.28), d2=R(90,190);
+      px+=Math.cos(a)*d2; py+=Math.sin(a)*d2*.7;
+      const ch=spawnItem(px,py,prev);
+      B.links.push({x1:prev.x,y1:prev.y,x2:ch.x,y2:ch.y,color:prev.type.color,
+                    born:Date.now(),lab:Math.random()<.5});
+      prev=ch; }
+    if(B.links.length>110)B.links.splice(0,B.links.length-110);
+  }
+
+  const w=cB._w,h=cB._h,z=B.cam.z;
+  const gr=95;
+  const avail=S.att>0.5;
+
+  for(let i=B.items.length-1;i>=0;i--){
+    const it=B.items[i];
+    it.a=Math.min(1,it.a+dt*2.4);
+    const age=(Date.now()-it.born)/1000;
+
+    if(it.state==='live'){
+      if(B.mouse.in&&avail&&!B.drag){
+        const sx=(it.x-B.cam.x)*z+w/2, sy=(it.y-B.cam.y)*z+h/2;
+        const d=Math.hypot(sx-B.mouse.x, sy-B.mouse.y);
+        if(d<gr){ const g=(1-d/gr)*26*dt; it.att+=g; drain+=g*.5; S.energy+=g*.004; }
+      }
+      if(it.att>18) it.att+=it.att*0.02*dt;         // 算法放大：富者愈富
+      it.att=Math.max(0, it.att-dt*(0.85+it.gen*.08));
+      if(!it.bred&&it.att>14){ it.bred=true;         // 繁殖变体
+        const n=RI(1,2);
+        for(let k=0;k<n;k++){
+          const a=R(0,6.28), d2=R(70,150);
+          const ch=spawnItem(it.x+Math.cos(a)*d2, it.y+Math.sin(a)*d2, it);
+          B.links.push({x1:it.x,y1:it.y,x2:ch.x,y2:ch.y,color:it.type.color,
+                        born:Date.now(), lab:Math.random()<.35});
+        }
+        if(B.links.length>110)B.links.splice(0,B.links.length-110);
+      }
+      if(it.att>=42){ it.state='ascend'; it.ascT=0; }
+      else if(age>26&&it.att<5){ it.state='fading'; }
+    }
+    else if(it.state==='ascend'){
+      it.ascT+=dt/0.9;
+      if(it.ascT>=1){
+        B.items.splice(i,1);
+        S.queue.push({art:it.art, type:it.type, model:it.model});
+        S.migrated++; shelfDirty=true;
+        toast(it.id+' 获得足够注意力 · 已迁入花园 →');
+        if(B.sel===it){B.sel=null;$('cardB').classList.remove('on');}
+        continue;
+      }
+    }
+    else if(it.state==='fading'){
+      it.fade+=dt/1.7;
+      if(it.fade>=1){ killItem(it); continue; }
+    }
+    it.ring=lerp(it.ring, it.att>9?1:0, dt*5);
+  }
+  return drain;
+}
+
+function renderBloom(){
+  const ctx=xB,w=cB._w,h=cB._h,z=B.cam.z;
+  ctx.save();
+  ctx.fillStyle=PAPER; ctx.fillRect(0,0,w,h);
+  ctx.translate(w/2,h/2); ctx.scale(z,z); ctx.translate(-B.cam.x,-B.cam.y);
+  const v=viewBounds();
+
+  // contour blobs（中点平滑闭合曲线）
+  ctx.lineWidth=1.1/z; ctx.globalAlpha=.45;
+  B.blobs.forEach(b=>{ ctx.strokeStyle=b.color; ctx.beginPath();
+    const P=b.pts,n=P.length;
+    ctx.moveTo((P[0].x+P[n-1].x)/2,(P[0].y+P[n-1].y)/2);
+    for(let i=0;i<n;i++){ const p=P[i],q=P[(i+1)%n];
+      ctx.quadraticCurveTo(p.x,p.y,(p.x+q.x)/2,(p.y+q.y)/2); }
+    ctx.closePath(); ctx.stroke(); });
+  ctx.globalAlpha=1;
+
+  // 漂流文字带
+  if(z>0.5){
+    ctx.fillStyle='rgba(38,33,26,.34)';
+    const off=Math.floor(B.t*2.6);
+    B.ribbons.forEach(rb=>{
+      if(rb.maxX<v.x0||rb.minX>v.x1||rb.maxY<v.y0||rb.minY>v.y1)return;
+      ctx.font=`${10/Math.sqrt(z)}px ui-monospace,Menlo,monospace`;
+      for(let i=0;i<rb.slots.length;i++){ const s=rb.slots[i];
+        ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang);
+        ctx.fillText(rb.msg[(i+off)%rb.msg.length],0,0); ctx.restore(); }
+    });
+  }
+
+  // 残骸沉积
+  ctx.fillStyle='#948B7C';
+  B.specks.forEach(s=>{ if(s.x<v.x0||s.x>v.x1||s.y<v.y0||s.y>v.y1)return;
+    ctx.fillRect(s.x,s.y,2.4,2.4); });
+
+  // 谱系连线（ref: 相册彩色时间线）
+  ctx.lineWidth=2.1/z;
+  B.links.forEach(l=>{
+    ctx.globalAlpha=.75; ctx.strokeStyle=l.color;
+    ctx.beginPath(); ctx.moveTo(l.x1,l.y1); ctx.lineTo(l.x2,l.y2); ctx.stroke();
+    if(l.lab){ ctx.globalAlpha=.6; ctx.fillStyle=INK;
+      ctx.font=`${9/z}px ui-monospace,Menlo,monospace`;
+      const d=new Date(l.born);
+      ctx.fillText(`(${d.getMonth()+1}.${d.getDate()})`,(l.x1+l.x2)/2+4/z,(l.y1+l.y2)/2-4/z); }
+  });
+  ctx.globalAlpha=1;
+
+  // items（被关注的在上层）
+  const sorted=[...B.items].sort((a,b)=>a.att-b.att);
+  sorted.forEach(it=>{
+    let s=itemSize(it);
+    let alpha=it.a;
+    if(it.state==='ascend'){ s*=1+it.ascT*.7; alpha*=(it.ascT<.7?1:1-(it.ascT-.7)/.3); }
+    if(it.state==='fading'){ alpha*=1-it.fade; }
+    const fl=Math.sin(B.t*.8+it.ph)*3.4;   // 轻微漂浮
+    const ix=it.x, iy=it.y+fl;
+    if(ix+s<v.x0||ix-s>v.x1||iy+s<v.y0||iy-s>v.y1)return;
+    const seedy=it.att<6&&it.state==='live';
+    ctx.globalAlpha=alpha*(seedy?.78:1);
+    ctx.fillStyle='rgba(38,33,26,.13)';    // 拼贴硬投影
+    ctx.fillRect(ix-s/2+3/z, iy-s/2+3/z, s, s);
+    ctx.imageSmoothingEnabled=!seedy;
+    ctx.drawImage(it.art.cv, ix-s/2, iy-s/2, s, s);
+    ctx.imageSmoothingEnabled=true;
+    ctx.lineWidth=1/z; ctx.strokeStyle='rgba(38,33,26,.55)';
+    ctx.strokeRect(ix-s/2,iy-s/2,s,s);
+    if(it.type.id==='video'){ const bs=Math.max(5,s*.16), pad2=3/z;
+      ctx.fillStyle='rgba(38,33,26,.8)';
+      ctx.beginPath();
+      ctx.moveTo(ix+s/2-bs-pad2, iy+s/2-bs-pad2);
+      ctx.lineTo(ix+s/2-pad2,    iy+s/2-bs/2-pad2);
+      ctx.lineTo(ix+s/2-bs-pad2, iy+s/2-pad2);
+      ctx.closePath(); ctx.fill(); }
+    if(it.type.id==='multi'){ ctx.strokeStyle='rgba(38,33,26,.45)';
+      ctx.strokeRect(ix-s/2+3,iy-s/2+3,s,s); }
+    if(it.ring>0.03){ ctx.globalAlpha=alpha*it.ring*.9;
+      ctx.strokeStyle=it.type.color; ctx.lineWidth=1.6/z;
+      wobble(ctx,ix,iy,s/2+9+it.ring*4,it.seed,2.4); ctx.stroke(); }
+    if(it.att>19){ ctx.globalAlpha=alpha*.8; ctx.fillStyle=INK;
+      ctx.font=`${9.5/z}px ui-monospace,Menlo,monospace`; ctx.textAlign='center';
+      ctx.fillText(`${it.art.title}`, ix, iy+s/2+13/z); ctx.textAlign='left'; }
+    if(it.state==='ascend'){ ctx.globalAlpha=(1-it.ascT)*.8;
+      ctx.strokeStyle=it.type.color; ctx.lineWidth=1.4/z;
+      wobble(ctx,ix,iy,s/2+14+it.ascT*46,it.seed,3); ctx.stroke(); }
+    ctx.globalAlpha=1;
+  });
+  ctx.restore();
+
+  // 注视范围（屏幕空间）
+  if(B.mouse.in&&!B.drag){
+    const dep=S.att<=0.5;
+    ctx.strokeStyle=dep?'rgba(200,80,42,.55)':'rgba(38,33,26,.3)';
+    ctx.setLineDash([4,5]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(B.mouse.x,B.mouse.y,95,0,7); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=dep?'rgba(200,80,42,.05)':'rgba(38,33,26,.03)';
+    ctx.beginPath(); ctx.arc(B.mouse.x,B.mouse.y,95,0,7); ctx.fill();
+    if(dep){ ctx.fillStyle='rgba(200,80,42,.85)';
+      ctx.font='9.5px ui-monospace,Menlo,monospace';
+      ctx.fillText('注意力耗尽 ATTENTION DEPLETED', B.mouse.x+14, B.mouse.y-12); }
+  }
+}
+
+/* --- bloom interaction --- */
+cB.addEventListener('pointerdown',e=>{ cB.setPointerCapture(e.pointerId);
+  B.drag={sx:e.offsetX,sy:e.offsetY,cx:B.cam.x,cy:B.cam.y,moved:0}; });
+cB.addEventListener('pointermove',e=>{
+  B.mouse.x=e.offsetX; B.mouse.y=e.offsetY; B.mouse.in=true;
+  if(B.drag){ const dx=e.offsetX-B.drag.sx, dy=e.offsetY-B.drag.sy;
+    B.drag.moved=Math.max(B.drag.moved,Math.hypot(dx,dy));
+    if(B.drag.moved>4){ B.cam.x=B.drag.cx-dx/B.cam.z; B.cam.y=B.drag.cy-dy/B.cam.z; } } });
+cB.addEventListener('pointerleave',()=>B.mouse.in=false);
+cB.addEventListener('pointerup',e=>{
+  const wasClick=B.drag&&B.drag.moved<5; B.drag=null;
+  if(!wasClick)return;
+  const w=cB._w,h=cB._h,z=B.cam.z;
+  const wx=(e.offsetX-w/2)/z+B.cam.x, wy=(e.offsetY-h/2)/z+B.cam.y;
+  let best=null,bd=1e9;
+  B.items.forEach(it=>{ const s=itemSize(it);
+    const d=Math.hypot(it.x-wx,it.y-wy); if(d<s/2+12/z&&d<bd){bd=d;best=it;} });
+  if(best){ B.sel=best;
+    if(S.att>8){ best.att+=10; S.att-=8; S.energy+=.04; }
+    refreshCardB(); $('cardB').classList.add('on');
+  } else { B.sel=null; $('cardB').classList.remove('on'); }
+});
+cB.addEventListener('wheel',e=>{ e.preventDefault();
+  const w=cB._w,h=cB._h;
+  const wx=(e.offsetX-w/2)/B.cam.z+B.cam.x, wy=(e.offsetY-h/2)/B.cam.z+B.cam.y;
+  B.cam.z=clamp(B.cam.z*Math.exp(-e.deltaY*0.0012),0.35,2.6);
+  B.cam.x=wx-(e.offsetX-w/2)/B.cam.z; B.cam.y=wy-(e.offsetY-h/2)/B.cam.z;
+},{passive:false});
+$('btnStorm').onclick=()=>{ B.stormUntil=Date.now()+6500;
+  toast('信息风暴来临 · 生成速率 ×6'); };
+$('cbCollect').onclick=()=>{
+  const it=B.sel; if(!it)return;
+  if(S.att<6){ toast('注意力不足，无法收藏'); return; }
+  S.att-=6;
+  S.queue.push({art:it.art, type:it.type, model:it.model});
+  S.migrated++; shelfDirty=true;
+  toast('已收藏 '+it.id+' → 种子架');
+};
+
+function refreshCardB(){ const it=B.sel; if(!it)return;
+  $('cbTitle').textContent=it.id+' · 生成对象档案';
+  const stZh=it.state==='ascend'?'迁移中 → 花园':(it.state==='fading'?'褪色中':'存活');
+  rows($('cbRows'),[
+    ['名称 TITLE', it.art.title],
+    ['类型 TYPE', `${it.type.zh} ${it.type.en}`],
+    ['生成模型 MODEL', it.model],
+    ['诞生 BORN', fmtT(it.born)],
+    ['世代 GEN', 'G'+it.gen],
+    ['累计注意力 ATT', it.att.toFixed(1)],
+    ['生成成本 COST', it.type.gen.toFixed(2)+' Wh'],
+    ['状态 STATE', stZh]
+  ]);
+}
+(function(){ const L=$('legBloom');
+  const items=[...TYPES.map(t=>[t.color,`${t.zh} ${t.en}`]), ['#948B7C','残骸 DEBRIS']];
+  L.innerHTML=items.map(x=>`<span><i style="border-color:${x[0]}"></i>${x[1]}</span>`).join('');
+})();
+// 开场即有信息在场（随后持续爆炸式生成）
+for(let i=0;i<26;i++){ const it=spawnItem();
+  it.att=R(0,13); it.born=Date.now()-R(0,22000)|0; it.a=1; }
+
+/* ============================================================
+   PAGE Ⅱ — SYNTHETIC GARDEN 注意力花园
+   世界坐标 + 相机：土壤、根系、天空全部锚定世界，随视角同步移动
+   ============================================================ */
+var shelfDirty=true;               // （信息页收藏后置脏，重建种子架）
+const WX=3200;                     // 世界宽度
+const SURF=18;                     // 地表前沿（土壤上边缘）
+function gy(x){ return -8*Math.sin(x*0.0036)+5*Math.sin(x*0.0011+2)+3*Math.sin(x*0.0079+1); }
+
+const LAYERS=[
+  {y0:SURF, y1:110, zh:'表土 · 行为采集', en:'TOPSOIL / SIGNAL CAPTURE', c:'#B99E7C'},
+  {y0:110,  y1:290, zh:'输送 · 数据传输', en:'TRANSMISSION / ROUTING',   c:'#96784F'},
+  {y0:290,  y1:470, zh:'缓存 · 排序引擎', en:'CACHE / RANKING',          c:'#75593B'},
+  {y0:470,  y1:680, zh:'计算 · 模型推理', en:'COMPUTE / INFERENCE',      c:'#54402A'},
+  {y0:680,  y1:920, zh:'能源 · 冷却循环', en:'ENERGY / COOLING',         c:'#3B2D1C'},
+  {y0:920,  y1:1120,zh:'基岩',           en:'BEDROCK',                  c:'#271E12'}
+];
+
+/* ---- 生长阶段（更长的生命周期：约 6 分钟） ---- */
+const STG=[
+  {zh:'种子', en:'SEED',       dur:9,  h:0,   hs:0},
+  {zh:'发芽', en:'SPROUT',     dur:16, h:24,  hs:0},
+  {zh:'幼苗', en:'SEEDLING',   dur:22, h:52,  hs:0},
+  {zh:'花苞', en:'BUD',        dur:24, h:78,  hs:14},
+  {zh:'初绽', en:'FIRST BLOOM',dur:28, h:96,  hs:36},
+  {zh:'盛放', en:'FULL BLOOM', dur:48, h:108, hs:52},
+  {zh:'繁茂', en:'FLOURISH',   dur:66, h:116, hs:58},
+  {zh:'结籽', en:'SEEDING',    dur:58, h:116, hs:54},
+  {zh:'迟暮', en:'FADING',     dur:64, h:110, hs:48},
+  {zh:'凋零', en:'WITHER',     dur:24, h:100, hs:40}
+];
+
+/* ---- 物种：图像风格 + 调色板 → 花的形态家族 ---- */
+const FORM_BY_STYLE={stitch:'pixel', spiral:'disc', blob:'round', photo:'ray',
+                     mosaic:'orchid', ring:'disc', botanic:'round', bars:'bell', pebble:'orchid'};
+const FORM_CN={pixel:'针脚', disc:'环纹', ray:'辐光', round:'团绒', bell:'铃铛', orchid:'斑斓'};
+const SPECIES={};
+function speciesOf(art){
+  const key=art.style+'-'+art.palIdx;
+  if(SPECIES[key])return SPECIES[key];
+  const form=FORM_BY_STYLE[art.style]||'ray';
+  const rnd=mulberry(key.split('').reduce((a,c)=>a*33+c.charCodeAt(0)>>>0,7));
+  const sp={key, form, pal:PALS[art.palIdx],
+    nameCN:FORM_CN[form]+'·'+PAL_CN[art.palIdx],
+    nameEN:(form+'/'+PAL_CN[art.palIdx]).toUpperCase(),
+    petalN:8+Math.floor(rnd()*6), seed:rnd()*9, wing:rnd()<.5?0:1};
+  SPECIES[key]=sp; return sp;
+}
+function speciesPop(key){ let n=0; G.plants.forEach(p=>{if(p.sp.key===key)n++;}); return n; }
+
+/* ---- 地下代谢网络（静态骨架） ---- */
+const NODES=[]; const EDGES={rc:[],cg:[],gs:[]}; let COOL=[]; let VEINS=[];
+function curvePts(x1,y1,x2,y2,bow,seed,n){
+  n=n||18; const mx=(x1+x2)/2+bow, my=(y1+y2)/2;
+  const pts=[];
+  for(let i=0;i<=n;i++){ const t=i/n,u=1-t;
+    let px=u*u*x1+2*u*t*mx+t*t*x2, py=u*u*y1+2*u*t*my+t*t*y2;
+    const f=1-Math.abs(t-.5)*2;
+    px+=Math.sin(t*8.5+seed)*7*f; py+=Math.cos(t*6.2+seed*1.7)*4*f;
+    pts.push({x:px,y:py}); }
+  return pts;
+}
+function ptsLen(pts){ let L=0; for(let i=1;i<pts.length;i++)L+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y); return L; }
+(function buildTrunk(){
+  const rnd=mulberry(20260808);
+  const RN=5, CN=3, GN=2;
+  for(let i=0;i<RN;i++) NODES.push({kind:'route', zh:'路由 ROUTE', x:WX*(i+.5)/RN+(rnd()-.5)*180,
+    y:196+(rnd()-.5)*40, w:34, h:16, count:0, busy:0, ph:rnd()*7});
+  for(let i=0;i<CN;i++) NODES.push({kind:'cache', zh:'缓存·排序 CACHE', x:WX*(i+.5)/CN+(rnd()-.5)*160,
+    y:382+(rnd()-.5)*30, w:46, h:22, count:0, busy:0, ph:rnd()*7});
+  for(let i=0;i<GN;i++) NODES.push({kind:'gpu', zh:'算力核 GPU', x:WX/2+(i?520:-520)+(rnd()-.5)*120,
+    y:575+(rnd()-.5)*24, w:64, h:38, count:0, busy:0, ph:rnd()*7});
+  NODES.push({kind:'sub', zh:'变电·能源 SUBSTATION', x:WX/2, y:800, w:84, h:32, count:0, busy:0, ph:0});
+  const routers=NODES.filter(n=>n.kind==='route'), caches=NODES.filter(n=>n.kind==='cache'),
+        gpus=NODES.filter(n=>n.kind==='gpu'), sub=NODES.find(n=>n.kind==='sub');
+  routers.forEach((r,i)=>{ let best=0,bd=1e9;
+    caches.forEach((c,j)=>{const d=Math.abs(c.x-r.x); if(d<bd){bd=d;best=j;}});
+    EDGES.rc[i]={pts:curvePts(r.x,r.y,caches[best].x,caches[best].y,(rnd()-.5)*120,rnd()*9), cache:best}; });
+  caches.forEach((c,i)=>{ let best=0,bd=1e9;
+    gpus.forEach((g,j)=>{const d=Math.abs(g.x-c.x); if(d<bd){bd=d;best=j;}});
+    EDGES.cg[i]={pts:curvePts(c.x,c.y,gpus[best].x,gpus[best].y,(rnd()-.5)*140,rnd()*9), gpu:best}; });
+  gpus.forEach((g,i)=>{ EDGES.gs[i]={pts:curvePts(g.x,g.y,sub.x,sub.y,(rnd()-.5)*160,rnd()*9,22)}; });
+  // 冷却环路：绕算力核的双管
+  gpus.forEach(g=>{ const loop=[];
+    for(let i=0;i<=30;i++){ const a=i/30*Math.PI*2;
+      loop.push({x:g.x+Math.cos(a)*95, y:g.y+6+Math.sin(a)*46}); }
+    COOL.push(loop); });
+  // 电网脉络：变电站伸向底部两角
+  VEINS=[curvePts(sub.x,sub.y,220,1060,(rnd()-.5)*200,3,24),
+         curvePts(sub.x,sub.y,WX-220,1060,(rnd()-.5)*200,5,24),
+         curvePts(sub.x,sub.y,sub.x+30,1090,40,7,16)];
+})();
+const ROUTERS=NODES.filter(n=>n.kind==='route');
+const CACHES=NODES.filter(n=>n.kind==='cache');
+const GPUS=NODES.filter(n=>n.kind==='gpu');
+const SUBN=NODES.find(n=>n.kind==='sub');
+
+/* ---- 土层静态画布（含根系骨架），世界矩形 (0,-80)-(WX,1120) ---- */
+const SOIL_TOP=-80;
+const soilCv=document.createElement('canvas');
+function drawRootPath(ctx,pts,w0,w1,c0,c1,hairs,seed){
+  for(let i=1;i<pts.length;i++){ const t=i/(pts.length-1);
+    ctx.strokeStyle=mixHex(c0,c1,t); ctx.lineWidth=lerp(w0,w1,t); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(pts[i-1].x,pts[i-1].y); ctx.lineTo(pts[i].x,pts[i].y); ctx.stroke(); }
+  if(hairs){ const rnd=mulberry((seed*1e4|0)+11);
+    for(let i=2;i<pts.length-1;i+=2){
+      const p=pts[i], a=Math.atan2(pts[i+1].y-p.y,pts[i+1].x-p.x)+(rnd()<.5?1:-1)*(1.1+rnd()*.6);
+      const l=6+rnd()*14*(1-i/pts.length);
+      ctx.strokeStyle=hexA('#6B4F32',.6); ctx.lineWidth=.9;
+      ctx.beginPath(); ctx.moveTo(p.x,p.y);
+      ctx.quadraticCurveTo(p.x+Math.cos(a)*l*.5,p.y+Math.sin(a)*l*.5+2,
+                           p.x+Math.cos(a)*l,p.y+Math.sin(a)*l+4); ctx.stroke(); } }
+}
+function buildSoil(){
+  soilCv.width=WX; soilCv.height=1120-SOIL_TOP;
+  const ctx=soilCv.getContext('2d');
+  ctx.translate(0,-SOIL_TOP);
+  const rnd=mulberry(99202608);
+  // 分层
+  LAYERS.forEach((L,li)=>{
+    ctx.fillStyle=L.c;
+    if(li===0){ ctx.beginPath(); ctx.moveTo(0,L.y1);
+      for(let x=0;x<=WX;x+=26)ctx.lineTo(x,gy(x)+SURF);
+      ctx.lineTo(WX,L.y1); ctx.closePath(); ctx.fill();
+    } else ctx.fillRect(0,L.y0,WX,L.y1-L.y0);
+    // 颗粒
+    const n=Math.floor(WX*(L.y1-L.y0)/1500);
+    for(let i=0;i<n;i++){ const x=rnd()*WX, y=L.y0+rnd()*(L.y1-L.y0);
+      ctx.fillStyle=rnd()<.5?hexA('#000000',.16):hexA('#F0E6D4',.10);
+      ctx.fillRect(x,y,2.2,2.2); }
+  });
+  // 石块
+  for(let i=0;i<70;i++){ const x=rnd()*WX, y=140+rnd()*880, r=4+rnd()*14;
+    ctx.strokeStyle=hexA('#1B140C',.4); ctx.fillStyle=hexA('#000000',.18);
+    ctx.beginPath(); ctx.ellipse(x,y,r,r*.62,rnd()*3,0,7); ctx.fill(); ctx.stroke(); }
+  // 表土层游离细根
+  for(let i=0;i<80;i++){ const x=rnd()*WX, y0=gy(x)+SURF+4;
+    ctx.strokeStyle=hexA('#7A5B3A',.5); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,y0);
+    ctx.quadraticCurveTo(x+(rnd()-.5)*20,y0+18,x+(rnd()-.5)*34,y0+30+rnd()*40); ctx.stroke(); }
+  // 层界虚线
+  LAYERS.slice(1).forEach(L=>{ ctx.strokeStyle=hexA('#F0E6D4',.22); ctx.setLineDash([7,9]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,L.y0); ctx.lineTo(WX,L.y0); ctx.stroke(); ctx.setLineDash([]); });
+  // 路由骨干（虚线互联）
+  ctx.strokeStyle=hexA('#C9B896',.28); ctx.setLineDash([3,7]); ctx.lineWidth=1.2;
+  for(let i=1;i<ROUTERS.length;i++){ ctx.beginPath();
+    ctx.moveTo(ROUTERS[i-1].x,ROUTERS[i-1].y); ctx.lineTo(ROUTERS[i].x,ROUTERS[i].y); ctx.stroke(); }
+  ctx.setLineDash([]);
+  // 主干根（输送→缓存→计算→能源）
+  EDGES.rc.forEach((e,i)=>drawRootPath(ctx,e.pts,7,4.2,'#7A5B3A','#5A4028',true,i+1));
+  EDGES.cg.forEach((e,i)=>drawRootPath(ctx,e.pts,9,5,'#6B4F32','#463021',true,i+5));
+  EDGES.gs.forEach((e,i)=>drawRootPath(ctx,e.pts,6,3.4,'#54402A','#38270F',false,i+9));
+  // 冷却环
+  COOL.forEach(loop=>{ ctx.strokeStyle=hexA('#4E9A94',.55); ctx.lineWidth=3;
+    ctx.beginPath(); loop.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+    ctx.closePath(); ctx.stroke();
+    ctx.strokeStyle=hexA('#20565A',.5); ctx.lineWidth=1; ctx.stroke(); });
+  // 电网脉络
+  VEINS.forEach(vn=>{ ctx.strokeStyle=hexA('#D0A63E',.4); ctx.lineWidth=2.4;
+    ctx.beginPath(); vn.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)); ctx.stroke(); });
+  // 节点机箱（静态部分）
+  NODES.forEach(nd=>{
+    ctx.fillStyle='#2C2417'; ctx.fillRect(nd.x-nd.w/2,nd.y-nd.h/2,nd.w,nd.h);
+    ctx.strokeStyle=hexA('#C9B896',.55); ctx.lineWidth=1.2;
+    ctx.strokeRect(nd.x-nd.w/2,nd.y-nd.h/2,nd.w,nd.h);
+    if(nd.kind==='gpu'){ ctx.strokeStyle=hexA('#C9B896',.3);
+      for(let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(nd.x-nd.w/2+i*nd.w/4,nd.y-nd.h/2);
+        ctx.lineTo(nd.x-nd.w/2+i*nd.w/4,nd.y+nd.h/2); ctx.stroke(); } }
+    if(nd.kind==='sub'){ ctx.strokeStyle=hexA('#D0A63E',.8); ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(nd.x-6,nd.y-9); ctx.lineTo(nd.x+2,nd.y-1);
+      ctx.lineTo(nd.x-2,nd.y+1); ctx.lineTo(nd.x+6,nd.y+9); ctx.stroke(); }
+    ctx.fillStyle='#C9B896'; ctx.font='8.5px ui-monospace,Menlo,monospace'; ctx.textAlign='center';
+    ctx.fillText(nd.zh, nd.x, nd.y+nd.h/2+11); ctx.textAlign='left';
+  });
+}
+buildSoil();
+
+/* ---- garden state ---- */
+const G={cam:{x:WX/2,y:-58,z:1}, camGoal:null, t:0, dayT:0, lapse:false,
+  plants:[], comms:[], flies:[], pulses:[],
+  parts:{sparks:[],petals:[],seeds:[],motes:[],leaves:[]},
+  settled:[], symbols:[], tufts:[],
+  mouse:{x:0,y:0,in:false}, drag:null, sel:null, selNode:null,
+  shelfSel:null, autoSowAcc:0, ambAcc:0, commAcc:0, metaAcc:0};
+
+const HILLS=[{f:.4,amp1:26,amp2:16,base:66,c:'#DED8C6',ph:1.2},
+             {f:.65,amp1:20,amp2:12,base:34,c:'#D2CBB6',ph:3.1}];
+const CLOUDS=[],FARDOTS=[];
+(function(){ // 漂浮符号 + 草地簇 + 云 + 远景花田点
+  const cols=['#C8502A','#4A7292','#D0A63E','#C48CA0','#6E8A58','#4E9A94'];
+  for(let i=0;i<30;i++) G.symbols.push({x:R(0,WX), y:R(-470,-90),
+    kind:RI(0,3), c:pick(cols), s:R(4,9), sp:R(4,14), ph:R(0,7)});
+  const rnd=mulberry(777);
+  for(let i=0;i<400;i++){ const x=rnd()*WX;
+    G.tufts.push({x, y:gy(x)+lerp(-38,14,rnd()), l:3+rnd()*7, a:(rnd()-.5)*.9,
+      c:pick(['#A8A47E','#8E9468','#B5AE85','#7E9B6E']), fl:rnd()<.06}); }
+  for(let i=0;i<7;i++) CLOUDS.push({x:rnd()*WX, y:-430+rnd()*220, s:.7+rnd()*.9, spd:2+rnd()*4});
+  for(let i=0;i<90;i++) FARDOTS.push({hx:rnd()*WX*1.6-WX*.3, c:pick(cols), s:1.4+rnd()*1.6});
+})();
+
+function w2s(wx,wy){ const z=G.cam.z;
+  return [(wx-G.cam.x)*z+cG._w/2, (wy-G.cam.y)*z+cG._h/2]; }
+function s2w(sx,sy){ const z=G.cam.z;
+  return [(sx-cG._w/2)/z+G.cam.x, (sy-cG._h/2)/z+G.cam.y]; }
+function gViewBounds(){ const z=G.cam.z,w=cG._w||1200,h=cG._h||800;
+  return {x0:G.cam.x-w/2/z, y0:G.cam.y-h/2/z, x1:G.cam.x+w/2/z, y1:G.cam.y+h/2/z}; }
+
+/* ---- 植株 ---- */
+function buildRootlet(p){
+  let best=0,bd=1e9;
+  ROUTERS.forEach((r,i)=>{ const d=Math.abs(r.x-p.x); if(d<bd){bd=d;best=i;} });
+  p.router=best;
+  const r=ROUTERS[best];
+  p.rootPts=curvePts(p.x, p.baseY+8, r.x, r.y, (p.x-r.x)*-.15+R(-40,40), p.sway, 16);
+  p.rootLen=ptsLen(p.rootPts);
+}
+function plantAt(seed, x, r, initStage){
+  if(G.plants.length>=CONFIG.maxPlants) return null;
+  const art=seed?seed.art:makeArt();
+  const sp=speciesOf(art);
+  if(speciesPop(sp.key)>=CONFIG.speciesCap && initStage===undefined) return null;
+  const type=seed?seed.type:pickType();
+  if(x===undefined){ let best=WX/2,bd=-1;
+    for(let k=0;k<10;k++){ const c=R(120,WX-120);
+      let d=1e9; G.plants.forEach(q=>d=Math.min(d,Math.abs(q.x-c)));
+      if(G.plants.length===0)d=1e5;
+      if(d>bd){bd=d;best=c;} }
+    x=best; }
+  if(r===undefined) r=Math.random();
+  const p={ id:'PL-'+pad(++S.plantSeq), art, sp, type,
+    model:seed?seed.model:pick(MODELS[type.id]),
+    x, r, baseY:gy(x)+lerp(-30,12,r), scale:lerp(.78,1.06,r),
+    born:Date.now(), stage:initStage??0, g:0, age:0,
+    att:seed?12:6, dry:0, wilt:0,
+    h:0, hs:0, sway:R(0,7), bend:Math.random()<.5?-1:1,
+    branches:[], pods:[], seedsDropped:0, energy:type.gen, comm:0};
+  const st=STG[p.stage]; p.h=st.h*p.scale*(p.stage>0?1:0); p.hs=st.hs*p.scale*.8;
+  if(p.stage>=6) makeBranches(p);
+  if(p.stage===7) makePods(p);
+  buildRootlet(p);
+  G.plants.push(p); S.energy+=type.gen;
+  return p;
+}
+function makeBranches(p){
+  const n=RI(1,3); p.branches=[];
+  for(let i=0;i<n;i++) p.branches.push({fr:R(.42,.72), side:i%2?1:-1,
+    len:R(26,46)*p.scale, t:0, ph:R(0,7)});
+}
+function makePods(p){
+  p.pods=[]; const n=RI(2,3);
+  for(let i=0;i<n;i++) p.pods.push({ang:R(-.9,.9), t:0, rel:.25+i*.28+R(0,.08), released:false});
+}
+
+/* ---- 脉冲（注意力↓ / 能量↑ / 残骸沉降） ---- */
+function pulsePathDown(p){
+  const e1=EDGES.rc[p.router], e2=EDGES.cg[e1.cache];
+  return {pts:[...p.rootPts, ...e1.pts, ...e2.pts],
+          nodes:[ROUTERS[p.router], CACHES[e1.cache], GPUS[e2.gpu]]};
+}
+function spawnPulse(kind,p){
+  if(G.pulses.length>44)return;
+  if(kind==='att'&&p){ const pd=pulsePathDown(p);
+    G.pulses.push({pts:pd.pts, nodes:pd.nodes, hit:0, t:0, spd:R(.16,.24),
+      color:'#E8B84B', size:2.6, kind}); }
+  else if(kind==='energy'){
+    const tgt=G.plants.length?pick(G.plants):null; if(!tgt)return;
+    const pd=pulsePathDown(tgt);
+    G.pulses.push({pts:[...pd.pts].reverse(), nodes:[], hit:0, t:0, spd:R(.12,.18),
+      color:'#4E9A94', size:2.4, kind, tgt}); }
+  else if(kind==='compost'&&p){
+    G.pulses.push({pts:[...p.rootPts], nodes:[], hit:0, t:0, spd:.1,
+      color:'#8A6A22', size:2.2, kind}); }
+}
+
+/* ---- 群落 & 蝴蝶 ---- */
+function recomputeComms(){
+  const by={};
+  G.plants.forEach(p=>{ if(p.stage>=4&&p.stage<=8&&p.wilt<.7){ (by[p.sp.key]=by[p.sp.key]||[]).push(p); } });
+  const comms=[];
+  Object.keys(by).forEach(k=>{
+    const arr=by[k].sort((a,b)=>a.x-b.x);
+    let cur=[arr[0]];
+    for(let i=1;i<=arr.length;i++){
+      if(i<arr.length && arr[i].x-arr[i-1].x<430) cur.push(arr[i]);
+      else{ if(cur.length>=3){
+          const cx=cur.reduce((s,p)=>s+p.x,0)/cur.length;
+          comms.push({key:k, sp:cur[0].sp, members:cur, level:cur.length, cx,
+            minX:cur[0].x, maxX:cur[cur.length-1].x,
+            topY:Math.min(...cur.map(p=>p.baseY-p.h-p.hs))}); }
+        cur=i<arr.length?[arr[i]]:[]; }
+    }
+  });
+  G.comms=comms;
+  G.plants.forEach(p=>p.comm=0);
+  comms.forEach(c=>c.members.forEach(p=>p.comm=c.level));
+  // 蝴蝶配额
+  const quota=[];
+  comms.forEach(c=>{ quota.push({c, q:Math.min(6, c.level>=5?6:3)}); });
+  // 移除孤儿
+  G.flies.forEach(f=>{ if(!comms.some(c=>c.key===f.key)) f.dying=true; });
+  // 补充
+  quota.forEach(({c,q})=>{
+    const have=G.flies.filter(f=>f.key===c.key&&!f.dying).length;
+    for(let i=have;i<q&&G.flies.length<14;i++){
+      G.flies.push({key:c.key, sp:c.sp, x:c.cx+R(-200,200), y:R(-260,-120),
+        vx:0, vy:0, ph:R(0,7), size:R(.7,1.1), land:0, tgt:null, retgt:0, a:0, dying:false});
+    }
+  });
+}
+function commOf(key){ return G.comms.find(c=>c.key===key); }
+
+/* ---- 种子架 ---- */
+const PACKETS=[]; // 常备随机种子包
+for(let i=0;i<3;i++){ const art=makeArt(); PACKETS.push({kind:'random', art, sp:speciesOf(art)}); }
+function shelfGroups(){
+  const g={}; S.queue.forEach(q=>{ const k=q.art.style+'-'+q.art.palIdx;
+    if(!g[k])g[k]={kind:'queue', key:k, art:q.art, sp:speciesOf(q.art), count:0};
+    g[k].count++; });
+  return Object.values(g);
+}
+function rebuildShelf(){
+  const row=$('shelfRow'); row.innerHTML='';
+  const items=[...shelfGroups(), ...PACKETS.map((p,i)=>({...p, idx:i}))];
+  items.forEach(it=>{
+    const d=document.createElement('div'); d.className='seedCard';
+    const key=it.kind==='queue'?('q:'+it.key):('r:'+it.idx);
+    if(G.shelfSel===key)d.classList.add('sel');
+    const cv=document.createElement('canvas'); cv.width=cv.height=56;
+    cv.getContext('2d').drawImage(it.art.cv,0,0,56,56);
+    d.appendChild(cv);
+    const sn=document.createElement('div'); sn.className='sn';
+    sn.textContent=it.kind==='queue'?it.sp.nameCN+' 种子':'随机种子 RND';
+    d.appendChild(sn);
+    if(it.kind==='queue'){ const ct=document.createElement('div'); ct.className='ct';
+      ct.textContent=it.count; d.appendChild(ct); }
+    d.onclick=()=>{ G.shelfSel=(G.shelfSel===key)?null:key; rebuildShelf();
+      if(G.shelfSel)toast('已选种子 · 点击土壤播种'); };
+    row.appendChild(d);
+  });
+}
+
+/* ---- 初始群落（花园一开始就有生机） ---- */
+(function initGarden(){
+  const artA=makeArt(), artB=makeArt(), artC=makeArt();
+  const mk=(art,x,stage,r)=>{ const p=plantAt({art, type:pickType(), model:pick(MODELS.image)}, x, r, stage);
+    if(p){ p.g=R(.1,.8); p.att=R(4,14);
+      p.branches.forEach(b=>b.t=R(.5,1)); p.pods.forEach(pd=>pd.t=R(.3,.9)); } return p; };
+  // 两个同种群落（落在默认视野内）+ 散点
+  [1150,1330,1510].forEach((x,i)=>mk(artA,x+R(-30,30),[6,5,5][i],R(.25,.9)));
+  [1860,2040,2220].forEach((x,i)=>mk(artB,x+R(-30,30),[5,6,7][i],R(.2,.85)));
+  [700,950,2560].forEach((x,i)=>mk(artC,x+R(-40,40),[4,5,3][i],R(.2,.9)));
+  [420,1690,2400,2760,2950,3050].forEach((x,i)=>mk(makeArt(),x+R(-40,40),[2,3,1,4,2,0][i],Math.random()));
+  recomputeComms();
+})();
+
+/* ---- update ---- */
+function stageUp(p){
+  p.stage++; p.g=0;
+  const st=STG[p.stage];
+  S.energy+=p.type.tick*18*Math.min(p.stage,6); p.energy+=p.type.tick*18*Math.min(p.stage,6);
+  for(let k=0;k<8;k++) G.parts.sparks.push({x:p.x+R(-22,22),y:p.baseY-p.h-R(0,26),vy:-R(8,22),life:1});
+  spawnPulse('att',p);
+  if(p.stage===6){ makeBranches(p); toast(p.id+' 进入繁茂期 · 长出分枝'); }
+  if(p.stage===7){ makePods(p); }
+  if(p.stage===5&&Math.random()<.5) toast(p.id+' 盛放 FULL BLOOM');
+}
+function removePlant(p,compost){
+  const i=G.plants.indexOf(p); if(i<0)return;
+  if(compost){
+    for(let k=0;k<12;k++) G.settled.push({x:p.x+R(-18,18), y:gy(p.x)+lerp(-30,12,p.r)+R(-2,4),
+      c:pick(['#6B4A2E','#4A3320','#8A6A46']), s:R(2,4)});
+    spawnPulse('compost',p); S.debris++;
+  }
+  if(G.sel===p){G.sel=null;$('cardG').classList.remove('on');}
+  G.plants.splice(i,1);
+}
+function updateGarden(dt0){
+  const dt=dt0*(G.lapse?4:1);
+  G.t+=dt; G.dayT=(G.dayT+dt/240)%1;
+  let drain=0;
+  const w=cG._w||1200,h=cG._h||800;
+  const active=activePage==='garden';
+  // 相机动画
+  if(G.camGoal){ G.cam.y=lerp(G.cam.y,G.camGoal.y,dt0*3.2);
+    if(Math.abs(G.cam.y-G.camGoal.y)<2)G.camGoal=null; }
+
+  // 迁入队列 → 自动播种（保持花园丰盈）
+  G.autoSowAcc+=dt;
+  if(G.autoSowAcc>22){ G.autoSowAcc=0;
+    if(G.plants.length<14){
+      const sd=S.queue.length?S.queue.shift():null;
+      const p=plantAt(sd||undefined);
+      if(p){ if(sd){shelfDirty=true; toast('1 个收藏对象已在花园落地 · '+p.id);} } } }
+  // 环境涓流（系统推荐流量，让花园维持基本生机）
+  G.ambAcc+=dt;
+  if(G.ambAcc>5){ G.ambAcc=0;
+    for(let k=0;k<2;k++){ const p=G.plants.length?pick(G.plants):null; if(p)p.att+=2; } }
+  // 代谢环境脉冲
+  G.metaAcc+=dt;
+  if(G.metaAcc>2.6){ G.metaAcc=0;
+    if(Math.random()<.75&&G.plants.length)spawnPulse('att',pick(G.plants));
+    if(Math.random()<.6)spawnPulse('energy'); }
+  // 群落
+  G.commAcc+=dt;
+  if(G.commAcc>0.9){ G.commAcc=0; recomputeComms(); }
+
+  const mw=s2w(G.mouse.x,G.mouse.y);
+  for(let i=G.plants.length-1;i>=0;i--){
+    const p=G.plants[i];
+    p.age+=dt;
+    const st=STG[p.stage];
+    // 悬停浇灌
+    let watered=false;
+    if(active&&G.mouse.in&&S.att>0.5&&!G.drag){
+      const hw=44*p.scale+p.hs*.6, top=p.baseY-p.h-p.hs-30;
+      if(mw[0]>p.x-hw&&mw[0]<p.x+hw&&mw[1]>top&&mw[1]<p.baseY+22){
+        const g2=20*dt0; p.att+=g2; drain+=g2*.5; S.energy+=g2*.005; watered=true;
+        if(Math.random()<dt0*18) G.parts.sparks.push({x:p.x+R(-18,18),y:p.baseY-p.h*R(.3,1)-8,vy:-R(8,18),life:1});
+        if(Math.random()<dt0*2.2) spawnPulse('att',p);
+      }
+    }
+    // 竞争 & 注意力衰减（缓慢）
+    let comp=0; G.plants.forEach(q=>{ if(q!==p&&Math.abs(q.x-p.x)<70)comp++; });
+    p.att=Math.max(0, p.att-dt*(0.32+comp*.13));
+    // 干涸→枯萎（比 v1 慢得多；群落成员更耐旱）
+    if(p.att<=0.5){ p.dry+=dt*(p.comm>=3?.4:.7); } else { p.dry=Math.max(0,p.dry-dt*3); }
+    p.wilt=clamp((p.dry-38)/70,0,1);
+    // 生长推进
+    const grow=(0.55+Math.min(p.att,30)*0.05+(p.comm>=3?.25:0))*(1-p.wilt*.85);
+    if(p.stage<9){
+      if(p.stage<=6){ if(p.wilt<.6) p.g+=dt/st.dur*grow; }
+      else { p.g+=dt/st.dur*(0.7+grow*.3); }   // 结籽/迟暮按自然节律
+      if(p.g>=1){
+        if(p.stage===8){ p.stage=9; p.g=0; }
+        else if(p.stage<8) stageUp(p);
+      }
+    } else {
+      p.g+=dt/STG[9].dur;
+      if(p.g>=1){ removePlant(p,true); continue; }
+    }
+    // 严重枯萎 → 提前迟暮
+    if(p.wilt>=1&&p.stage<8){ p.stage=8; p.g=.3; }
+    // 分枝生长
+    p.branches.forEach(b=>{ b.t=Math.min(1,b.t+dt/26); });
+    // 结籽 & 落种
+    if(p.stage===7){
+      p.pods.forEach(pod=>{ pod.t=Math.min(1,pod.t+dt/16);
+        if(!pod.released&&p.g>pod.rel){ pod.released=true; p.seedsDropped++;
+          const hx=p.x+Math.sin(pod.ang)*p.hs*1.1;
+          G.parts.seeds.push({x:hx, y:p.baseY-p.h-p.hs*.4, vy:6, ph:R(0,7),
+            r:clamp(p.r+R(-.3,.3),0,1), seed:{art:p.art,type:p.type,model:p.model},
+            tx:clamp(hx+R(-160,160)*(Math.random()<.5?-1:1),100,WX-100)});
+        } });
+    }
+    // 迟暮落瓣
+    if(p.stage===8&&Math.random()<dt*.7&&p.hs>10){
+      G.parts.petals.push({x:p.x+R(-p.hs,p.hs)*.6, y:p.baseY-p.h-p.hs*.5,
+        vx:R(-4,4), vy:R(3,9), rot:R(0,7), vr:R(-2,2), life:1,
+        c:p.sp.pal[Math.random()<.7?0:1], s:R(3,5), landY:p.baseY+R(-4,6)});
+    }
+    // 高度/花头缓动
+    p.h=lerp(p.h, st.h*p.scale, dt*1.6);
+    p.hs=lerp(p.hs, st.hs*p.scale, dt*1.8);
+    if(watered&&Math.random()<dt*.5) spawnPulse('att',p);
+  }
+  // 群落粒子（光尘上升）
+  G.comms.forEach(c=>{
+    if(Math.random()<dt*(c.level>=5?3:1.2)){
+      G.parts.motes.push({x:R(c.minX-40,c.maxX+40), y:gy(c.cx)+R(-20,10),
+        vy:-R(6,16), life:1, c:c.sp.pal[0]}); }
+  });
+  // 蝴蝶
+  for(let i=G.flies.length-1;i>=0;i--){
+    const f=G.flies[i];
+    f.a=lerp(f.a, f.dying?0:1, dt*1.4);
+    if(f.dying&&f.a<.03){ G.flies.splice(i,1); continue; }
+    const c=commOf(f.key);
+    f.retgt-=dt;
+    if(f.retgt<=0||!f.tgt||!G.plants.includes(f.tgt)){
+      f.retgt=R(2.5,6);
+      f.tgt=(c&&c.members.length)?pick(c.members):null;
+      if(f.land>0&&Math.random()<.7)f.land=0;
+    }
+    if(f.tgt){
+      const hx=f.tgt.x, hy=f.tgt.baseY-f.tgt.h-f.tgt.hs*.7;
+      if(f.land>0){ f.land-=dt; f.x=lerp(f.x,hx,dt*6); f.y=lerp(f.y,hy-4,dt*6); }
+      else{
+        const dx=hx-f.x, dy=hy-f.y, d=Math.hypot(dx,dy)||1;
+        f.vx+=(dx/d*46-f.vx)*dt*1.6+Math.sin(G.t*3+f.ph)*26*dt;
+        f.vy+=(dy/d*46-f.vy)*dt*1.6+Math.cos(G.t*2.3+f.ph)*20*dt;
+        f.x+=f.vx*dt; f.y+=f.vy*dt;
+        if(d<26&&Math.random()<dt*.9){ f.land=R(1.6,4); }
+      }
+    } else { f.x+=Math.sin(G.t+f.ph)*12*dt; f.y+=Math.cos(G.t*.8+f.ph)*8*dt; }
+  }
+  // 粒子推进
+  const P=G.parts;
+  for(let i=P.sparks.length-1;i>=0;i--){ const s=P.sparks[i];
+    s.y+=s.vy*dt; s.vy+=dt*7; s.life-=dt*1.3; if(s.life<=0)P.sparks.splice(i,1); }
+  for(let i=P.motes.length-1;i>=0;i--){ const m=P.motes[i];
+    m.y+=m.vy*dt; m.life-=dt*.5; if(m.life<=0)P.motes.splice(i,1); }
+  for(let i=P.petals.length-1;i>=0;i--){ const pt=P.petals[i];
+    pt.x+=pt.vx*dt+Math.sin(pt.rot*2)*8*dt; pt.y+=pt.vy*dt; pt.rot+=pt.vr*dt;
+    if(pt.y>=pt.landY){ G.settled.push({x:pt.x,y:pt.landY,c:pt.c,s:2.6}); P.petals.splice(i,1); } }
+  for(let i=P.seeds.length-1;i>=0;i--){ const sd=P.seeds[i];
+    sd.vy=Math.min(sd.vy+dt*10,26);
+    sd.y+=sd.vy*dt; sd.x+=(sd.tx-sd.x)*dt*.5+Math.sin(G.t*3+sd.ph)*10*dt;
+    const ly=gy(sd.x)+lerp(-30,12,sd.r);
+    if(sd.y>=ly){
+      P.seeds.splice(i,1);
+      const pop=speciesPop(speciesOf(sd.seed.art).key);
+      if(G.plants.length<CONFIG.maxPlants&&pop<CONFIG.speciesCap&&Math.random()<.8){
+        const p=plantAt(sd.seed, clamp(sd.x,100,WX-100), sd.r, 0);
+        if(p&&Math.random()<.4)toast('落种生根 · '+p.sp.nameCN+' 群落 +1');
+      } else for(let k=0;k<3;k++)G.parts.sparks.push({x:sd.x+R(-5,5),y:ly,vy:-R(4,10),life:.8});
+    } }
+  if(G.settled.length>420)G.settled.splice(0,G.settled.length-420);
+  // 脉冲
+  for(let i=G.pulses.length-1;i>=0;i--){ const pl=G.pulses[i];
+    pl.t+=dt*pl.spd;
+    const k=pl.t*(pl.pts.length-1);
+    while(pl.nodes&&pl.hit<pl.nodes.length&&k>= (pl.hit+1)*(pl.pts.length/ (pl.nodes.length+1)) ){
+      const nd=pl.nodes[pl.hit]; nd.count++; nd.busy=1; pl.hit++; }
+    if(pl.t>=1){
+      if(pl.kind==='att'){ S.energy+=.02; const g=pl.nodes&&pl.nodes[2]; if(g){g.busy=1;}
+        if(Math.random()<.3)spawnPulse('energy'); }
+      if(pl.kind==='energy'&&pl.tgt&&G.plants.includes(pl.tgt)){ pl.tgt.att+=1.4;
+        G.parts.sparks.push({x:pl.tgt.x,y:pl.tgt.baseY-4,vy:-R(6,12),life:.9}); }
+      G.pulses.splice(i,1); }
+  }
+  NODES.forEach(nd=>nd.busy=Math.max(0,nd.busy-dt*.8));
+  // 功率模型
+  const target=38+G.plants.length*.55+G.pulses.length*2.2+GPUS.reduce((s,g)=>s+g.busy*46,0);
+  S.power=lerp(S.power,target,dt*.7);
+  S.energy+=S.power*dt/3600*.6;
+  return active?drain:0;
+}
+
+/* ============================================================
+   GARDEN — 渲染
+   ============================================================ */
+function drawArtCircle(ctx,art,x,y,r){
+  ctx.save(); ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.clip();
+  const rr=r*1.4;                       // 中心放大裁切，让纹样充满花心
+  ctx.drawImage(art.cv,x-rr,y-rr,rr*2,rr*2); ctx.restore();
+  ctx.lineWidth=1.3; ctx.strokeStyle='rgba(38,33,26,.8)';
+  ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.stroke();
+}
+function petalColor(sp,i,wilt){
+  const base=i%3===2?sp.pal[1]:sp.pal[0];
+  return mixHex(base,'#8A7A5E',wilt*.8);
+}
+/* 花头：按物种形态绘制。s=半径尺度，t=开放度，wilt=枯萎度 */
+function drawHead(ctx,p,x,y,s,t,wilt,mini){
+  const sp=p.sp, tt=easeOut(t);
+  if(s*tt<4)return;
+  ctx.save(); ctx.translate(x,y);
+  ctx.rotate(Math.sin(G.t*.7+p.sway)*.04*(1-wilt)+wilt*.34*p.bend);
+  const S2=s*tt;
+  if(sp.form==='ray'){
+    for(let k=0;k<sp.petalN;k++){ const a=k/sp.petalN*Math.PI*2+sp.seed;
+      ctx.save(); ctx.rotate(a);
+      ctx.fillStyle=petalColor(sp,k,wilt);
+      ctx.beginPath(); ctx.ellipse(0,-S2*.62,S2*.19,S2*.44,0,0,7); ctx.fill();
+      ctx.lineWidth=.8; ctx.strokeStyle='rgba(38,33,26,.4)'; ctx.stroke(); ctx.restore(); }
+    if(!mini)drawArtCircle(ctx,p.art,0,0,S2*.4);
+    else{ ctx.fillStyle=mixHex(sp.pal[1],'#8A7A5E',wilt); ctx.beginPath(); ctx.arc(0,0,S2*.34,0,7); ctx.fill();
+      ctx.lineWidth=1; ctx.strokeStyle='rgba(38,33,26,.6)'; ctx.stroke(); }
+  }
+  else if(sp.form==='round'){
+    for(let k=0;k<6;k++){ const a=k/6*Math.PI*2+sp.seed;
+      ctx.fillStyle=petalColor(sp,k,wilt);
+      ctx.beginPath(); ctx.arc(Math.cos(a)*S2*.52,Math.sin(a)*S2*.52,S2*.4,0,7); ctx.fill();
+      ctx.lineWidth=.9; ctx.strokeStyle='rgba(38,33,26,.4)'; ctx.stroke(); }
+    if(!mini)drawArtCircle(ctx,p.art,0,0,S2*.46);
+    else{ ctx.fillStyle=mixHex(sp.pal[1],'#8A7A5E',wilt); ctx.beginPath(); ctx.arc(0,0,S2*.4,0,7); ctx.fill(); }
+  }
+  else if(sp.form==='bell'){
+    ctx.fillStyle=petalColor(sp,0,wilt);
+    ctx.beginPath();
+    ctx.moveTo(-S2*.34,-S2*.5); ctx.quadraticCurveTo(-S2*.72,S2*.28,-S2*.52,S2*.62);
+    for(let k=0;k<3;k++) ctx.quadraticCurveTo(-S2*.52+S2*.35*(k+.5),S2*.86, -S2*.52+S2*.35*(k+1),S2*.62);
+    ctx.quadraticCurveTo(S2*.72,S2*.28,S2*.34,-S2*.5); ctx.closePath();
+    ctx.fill(); ctx.lineWidth=1.2; ctx.strokeStyle='rgba(38,33,26,.55)'; ctx.stroke();
+    if(!mini){ ctx.save(); ctx.beginPath(); ctx.rect(-S2*.4,-S2*.34,S2*.8,S2*.8); ctx.clip();
+      ctx.drawImage(p.art.cv,-S2*.4,-S2*.4,S2*.8,S2*.8); ctx.restore();
+      ctx.strokeStyle='rgba(38,33,26,.5)'; ctx.strokeRect(-S2*.4,-S2*.34,S2*.8,S2*.74); }
+    ctx.fillStyle=mixHex(sp.pal[1],'#8A7A5E',wilt);
+    ctx.beginPath(); ctx.ellipse(0,-S2*.52,S2*.3,S2*.16,0,0,7); ctx.fill();
+  }
+  else if(sp.form==='pixel'){
+    const fw=S2*1.5, bar=fw*.18, x0=-fw/2, y0=-fw/2-bar*.4;
+    ctx.imageSmoothingEnabled=false;
+    ctx.fillStyle='#E7E1D0'; ctx.fillRect(x0,y0,fw,bar);
+    if(!mini)ctx.drawImage(p.art.cv,x0,y0+bar,fw,fw-bar);
+    else{ ctx.fillStyle=mixHex(sp.pal[0],'#8A7A5E',wilt); ctx.fillRect(x0,y0+bar,fw,fw-bar); }
+    ctx.imageSmoothingEnabled=true;
+    if(wilt>0){ ctx.fillStyle=`rgba(107,74,46,${wilt*.4})`; ctx.fillRect(x0,y0+bar,fw,fw-bar); }
+    ctx.lineWidth=1.3; ctx.strokeStyle='rgba(38,33,26,.85)'; ctx.strokeRect(x0,y0,fw,fw);
+    ctx.beginPath(); ctx.moveTo(x0,y0+bar); ctx.lineTo(x0+fw,y0+bar); ctx.stroke();
+    ['#C96F4A','#D9A441','#7E9B6E'].forEach((c,i)=>{ ctx.fillStyle=c;
+      ctx.beginPath(); ctx.arc(x0+5+i*6,y0+bar/2,1.8,0,7); ctx.fill(); });
+    const px=fw*.14;
+    for(let k=0;k<8;k++){ const a=k/8*Math.PI*2;
+      ctx.fillStyle=petalColor(sp,k,wilt);
+      ctx.fillRect(Math.cos(a)*(fw*.62)-px/2, Math.sin(a)*(fw*.62)-px/2+bar*.2, px, px); }
+  }
+  else if(sp.form==='orchid'){
+    [[-.5,-.24,1.1],[.5,-.24,-1.1]].forEach(([ox,oy,rr],k)=>{
+      ctx.save(); ctx.rotate(rr*.35);
+      ctx.fillStyle=petalColor(sp,k,wilt);
+      ctx.beginPath(); ctx.ellipse(ox*S2*.5,oy*S2,S2*.44,S2*.24,rr*.5,0,7); ctx.fill();
+      ctx.lineWidth=.9; ctx.strokeStyle='rgba(38,33,26,.4)'; ctx.stroke(); ctx.restore(); });
+    for(let k=0;k<3;k++){ const a=Math.PI*(.25+.25*k);
+      ctx.fillStyle=petalColor(sp,k+2,wilt);
+      ctx.beginPath(); ctx.ellipse(Math.cos(a)*S2*.42,Math.sin(a)*S2*.5,S2*.2,S2*.32,a-1.57,0,7); ctx.fill();
+      ctx.lineWidth=.8; ctx.strokeStyle='rgba(38,33,26,.35)'; ctx.stroke(); }
+    ctx.fillStyle='rgba(38,33,26,.5)';
+    for(let k=0;k<7;k++){ const a=R(0,7),rr=R(S2*.2,S2*.55); ctx.fillRect(Math.cos(a)*rr,Math.sin(a)*rr*.7,1.6,1.6); }
+    if(!mini)drawArtCircle(ctx,p.art,0,S2*.05,S2*.3);
+  }
+  else { // disc 环纹
+    for(let ring=0;ring<2;ring++){
+      const n=ring?9:15, rr=ring?S2*.5:S2*.82;
+      for(let k=0;k<n;k++){ const a=k/n*Math.PI*2+ring*.3+sp.seed;
+        ctx.strokeStyle=petalColor(sp,k+ring,wilt); ctx.lineWidth=ring?S2*.16:S2*.12; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(Math.cos(a)*rr*.72,Math.sin(a)*rr*.72);
+        ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); ctx.stroke(); } }
+    ctx.lineWidth=1; ctx.strokeStyle='rgba(38,33,26,.5)';
+    ctx.beginPath(); ctx.arc(0,0,S2*.62,0,7); ctx.stroke();
+    if(!mini)drawArtCircle(ctx,p.art,0,0,S2*.4);
+    else{ ctx.fillStyle=mixHex(sp.pal[1],'#8A7A5E',wilt); ctx.beginPath(); ctx.arc(0,0,S2*.3,0,7); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function stemPoint(p,fr){ // 茎上某高度比例的点（含风摆与枯垂）
+  const sway=Math.sin(G.t*.8+p.sway)*3*(1-p.wilt)*fr*fr;
+  const bend=Math.pow(fr,2)*p.wilt*38*p.bend;
+  return [p.x+sway+bend, p.baseY-p.h*fr];
+}
+function drawPlant(ctx,p){
+  const sc=p.scale;
+  const witherK=p.stage===9?easeOut(p.g):0;
+  ctx.save();
+  if(witherK>0){ ctx.translate(p.x,p.baseY); ctx.rotate(witherK*1.1*p.bend);
+    ctx.scale(1,1-witherK*.5); ctx.translate(-p.x,-p.baseY); ctx.globalAlpha=1-witherK*.7; }
+  if(p.stage===0){ // 种子鼓包
+    ctx.fillStyle='#8F764F'; ctx.beginPath(); ctx.ellipse(p.x,p.baseY+2,8*sc,3.4*sc,0,0,7); ctx.fill();
+    ctx.fillStyle=mixHex('#55744A','#5B3F28',p.wilt);
+    ctx.fillRect(p.x-2.4,p.baseY-4-4*easeOut(p.g),4.8,5);
+    if(Math.sin(G.t*3+p.sway)>.6){ ctx.fillStyle='#E8B84B'; ctx.fillRect(p.x-1,p.baseY-10,2,2); }
+    ctx.restore(); return;
+  }
+  // 茎（分段折线，带风摆/枯垂）
+  const segs=Math.max(3,Math.floor(p.h/9));
+  ctx.lineCap='round';
+  for(let i=0;i<segs;i++){
+    const f0=i/segs, f1=(i+1)/segs;
+    const [ax,ay]=stemPoint(p,f0), [bx,by]=stemPoint(p,f1);
+    ctx.strokeStyle=mixHex(i%3===0?'#55744A':'#6E8A58','#7A5638',p.wilt);
+    ctx.lineWidth=lerp(3.6,2,f1)*sc;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  }
+  // 叶
+  const leafN=p.stage>=3?3:(p.stage>=2?2:1);
+  for(let i=0;i<leafN;i++){
+    const fr=.28+i*.22, dir=i%2?1:-1;
+    const [lx,ly]=stemPoint(p,fr);
+    ctx.save(); ctx.translate(lx,ly);
+    ctx.rotate(dir*(1-.35)+(p.wilt*.7*dir)+Math.sin(G.t*.9+p.sway+i)*.06);
+    ctx.fillStyle=mixHex(i%2?'#83A06B':'#6E8A58','#6B4A2E',p.wilt);
+    ctx.beginPath(); ctx.ellipse(dir*9*sc,0,11*sc,4.4*sc,0,0,7); ctx.fill();
+    ctx.lineWidth=.8; ctx.strokeStyle='rgba(38,33,26,.35)';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(dir*17*sc,0); ctx.stroke();
+    ctx.restore();
+  }
+  // 分枝 + 小花
+  p.branches.forEach(b=>{
+    if(b.t<=0)return;
+    const [bx,by]=stemPoint(p,b.fr);
+    const ex=bx+b.side*b.len*b.t, ey=by-b.len*.8*b.t;
+    ctx.strokeStyle=mixHex('#6E8A58','#7A5638',p.wilt); ctx.lineWidth=2*sc;
+    ctx.beginPath(); ctx.moveTo(bx,by);
+    ctx.quadraticCurveTo(bx+b.side*b.len*.5*b.t, by-b.len*.2, ex, ey); ctx.stroke();
+    if(b.t>.55) drawHead(ctx,p,ex,ey,p.hs*.42,(b.t-.55)/.45,p.wilt,true);
+  });
+  const [tx,ty]=stemPoint(p,1);
+  // 花苞或花头
+  if(p.stage===3){
+    const bs=lerp(4,10,p.g)*sc;
+    ctx.fillStyle=mixHex(p.sp.pal[0],'#8A7A5E',p.wilt);
+    ctx.beginPath(); ctx.ellipse(tx,ty-bs*.7,bs*.62,bs,0,0,7); ctx.fill();
+    ctx.lineWidth=1; ctx.strokeStyle='rgba(38,33,26,.5)'; ctx.stroke();
+    ctx.fillStyle='#55744A';
+    for(let k=-1;k<=1;k++){ ctx.beginPath();
+      ctx.ellipse(tx+k*bs*.44,ty-bs*.3,bs*.24,bs*.5,k*.5,0,7); ctx.fill(); }
+  } else if(p.stage>=4){
+    const headY=ty-p.hs*.62;
+    // 繁茂光环
+    if(p.stage===6&&p.wilt<.5){
+      const gr2=ctx.createRadialGradient(tx,headY,p.hs*.3,tx,headY,p.hs*2.1);
+      gr2.addColorStop(0,hexA(p.sp.pal[0],.16)); gr2.addColorStop(1,hexA(p.sp.pal[0],0));
+      ctx.fillStyle=gr2; ctx.beginPath(); ctx.arc(tx,headY,p.hs*2.1,0,7); ctx.fill();
+    }
+    drawHead(ctx,p,tx,headY,p.hs,p.stage===4?.5+p.g*.5:1,p.wilt,false);
+    // 繁茂环绕文字
+    if(p.stage===6&&p.wilt<.4){
+      const msg='被看见 · 生长 · SEEN · GROWN · ';
+      ctx.fillStyle='rgba(38,33,26,.5)'; ctx.font='9px ui-monospace,Menlo,monospace';
+      const rr=p.hs*1.5+8;
+      for(let k=0;k<msg.length;k++){ const a=G.t*.25+k/msg.length*Math.PI*2;
+        ctx.save(); ctx.translate(tx+Math.cos(a)*rr, headY+Math.sin(a)*rr);
+        ctx.rotate(a+Math.PI/2); ctx.fillText(msg[k],0,0); ctx.restore(); }
+    }
+    // 种荚
+    if(p.stage===7){
+      p.pods.forEach(pod=>{ if(pod.t<=0)return;
+        const px=tx+Math.sin(pod.ang)*p.hs*1.1*pod.t, py=headY+Math.cos(pod.ang)*p.hs*.3-p.hs*.2;
+        ctx.strokeStyle=mixHex('#6E8A58','#7A5638',p.wilt); ctx.lineWidth=1.4;
+        ctx.beginPath(); ctx.moveTo(tx,headY); ctx.quadraticCurveTo((tx+px)/2,py-9,px,py); ctx.stroke();
+        ctx.fillStyle=pod.released?'#8A6A46':mixHex(p.sp.pal[1],'#8A6A46',pod.t*.5);
+        ctx.beginPath(); ctx.arc(px,py,3.6*pod.t+ (pod.released?0:Math.sin(G.t*4)*0.6),0,7); ctx.fill();
+        ctx.lineWidth=.8; ctx.strokeStyle='rgba(38,33,26,.5)'; ctx.stroke(); });
+    }
+  }
+  ctx.restore();
+  // 悬停提示环 & 缺水提示
+  if(G.sel===p||p._hov){
+    ctx.strokeStyle=p.sp.pal[0]; ctx.lineWidth=1.5;
+    wobble(ctx,p.x,p.baseY-p.h-(p.hs||8)*.6,46*sc+p.hs*.5,p.sway,2.5); ctx.stroke();
+  }
+  if(p.wilt>0.2&&p.stage<9){
+    ctx.fillStyle='rgba(168,94,51,.9)'; ctx.font='9px ui-monospace,Menlo,monospace';
+    ctx.textAlign='center'; ctx.fillText('缺乏注意力 '+Math.round(p.wilt*100)+'%',p.x,p.baseY+26);
+    ctx.textAlign='left';
+  }
+}
+function drawButterfly(ctx,f){
+  const flap=Math.abs(Math.sin(G.t*(f.land>0?3:11)+f.ph));
+  ctx.save(); ctx.translate(f.x,f.y); ctx.globalAlpha=f.a;
+  ctx.rotate(clamp(f.vx*.004,-.5,.5));
+  const s=10.5*f.size;
+  [-1,1].forEach(d=>{
+    ctx.save(); ctx.scale(d*(0.35+flap*.65),1);
+    if(f.sp.wing){ ctx.fillStyle=f.sp.pal[0];
+      ctx.fillRect(2,-s*.8,s,s*.75); ctx.fillRect(2,-s*.05,s*.75,s*.6);
+      ctx.fillStyle=f.sp.pal[1]; ctx.fillRect(s*.35,-s*.55,s*.3,s*.3);
+      ctx.lineWidth=.8; ctx.strokeStyle='rgba(38,33,26,.5)';
+      ctx.strokeRect(2,-s*.8,s,s*.75);
+    } else { ctx.fillStyle=f.sp.pal[0];
+      ctx.beginPath(); ctx.ellipse(s*.6,-s*.35,s*.62,s*.42,-.4,0,7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(s*.5,s*.25,s*.45,s*.32,.4,0,7); ctx.fill();
+      ctx.fillStyle=f.sp.pal[1];
+      ctx.beginPath(); ctx.arc(s*.6,-s*.35,s*.16,0,7); ctx.fill();
+      ctx.lineWidth=.7; ctx.strokeStyle='rgba(38,33,26,.45)';
+      ctx.beginPath(); ctx.ellipse(s*.6,-s*.35,s*.62,s*.42,-.4,0,7); ctx.stroke(); }
+    ctx.restore();
+  });
+  ctx.strokeStyle='#26211A'; ctx.lineWidth=1.6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0,-s*.5); ctx.lineTo(0,s*.5); ctx.stroke();
+  ctx.lineWidth=.7;
+  ctx.beginPath(); ctx.moveTo(0,-s*.5); ctx.lineTo(-s*.3,-s*.9);
+  ctx.moveTo(0,-s*.5); ctx.lineTo(s*.3,-s*.9); ctx.stroke();
+  ctx.restore();
+}
+function renderGarden(){
+  const ctx=xG, w=cG._w, h=cG._h, z=G.cam.z;
+  if(!w)return;
+  const vb=gViewBounds();
+  // ---- 天空（屏幕空间渐变，锚定世界高度） ----
+  const yTop=w2s(0,-640)[1], yGnd=w2s(0,26)[1];
+  const day=Math.sin(G.dayT*Math.PI*2)*.5+.5;
+  const gr=ctx.createLinearGradient(0,yTop,0,yGnd);
+  gr.addColorStop(0,mixHex('#DFE5E0','#E8E2CE',day));
+  gr.addColorStop(1,PAPER);
+  ctx.fillStyle=gr; ctx.fillRect(0,0,w,h);
+  ctx.save();
+  ctx.translate(w/2,h/2); ctx.scale(z,z); ctx.translate(-G.cam.x,-G.cam.y);
+  // 太阳（同心环，x 视差）
+  {
+    const f=.72, sx=1985-(G.cam.x*f+(WX/2)*(1-f)-G.cam.x), sy=-330;
+    ctx.fillStyle=hexA('#E4D9B8',.9); ctx.beginPath(); ctx.arc(sx,sy,46,0,7); ctx.fill();
+    for(let i=1;i<=3;i++){ ctx.strokeStyle=hexA('#C9B472',.5-i*.12); ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(sx,sy,46+i*14+Math.sin(G.t*.5+i)*2,0,7); ctx.stroke(); }
+  }
+  // 漂浮符号
+  G.symbols.forEach(s=>{
+    const x=(s.x+G.t*s.sp)%WX, y=s.y+Math.sin(G.t*.5+s.ph)*5;
+    if(x<vb.x0-20||x>vb.x1+20||y<vb.y0-20||y>vb.y1+20)return;
+    ctx.globalAlpha=.5; ctx.fillStyle=s.c; ctx.strokeStyle=s.c;
+    if(s.kind===0){ ctx.fillRect(x-s.s/2,y-1.4,s.s,2.8); ctx.fillRect(x-1.4,y-s.s/2,2.8,s.s); }
+    else if(s.kind===1){ for(let i2=0;i2<3;i2++)for(let j=0;j<3;j++)ctx.fillRect(x+i2*4,y+j*4,2,2); }
+    else if(s.kind===2){ ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(x,y,s.s*.6,0,7); ctx.stroke(); }
+    else ctx.fillRect(x-2,y-2,4,4);
+  });
+  ctx.globalAlpha=1;
+  // 云（纸剪影，x 视差 + 缓慢漂移）
+  CLOUDS.forEach(cl=>{
+    const f=.55, offX=G.cam.x*(1-f)-(WX/2)*(1-f);
+    const drift=((cl.x+G.t*cl.spd)%(WX*1.3))-WX*.15;
+    const px=drift-offX;
+    if(px<vb.x0-160||px>vb.x1+160)return;
+    ctx.fillStyle='rgba(246,243,234,.85)';
+    [[0,0,52,17],[30,-9,38,14],[-32,-6,34,12]].forEach(([ox,oy,rx,ry])=>{
+      ctx.beginPath(); ctx.ellipse(px+ox*cl.s,cl.y+oy*cl.s,rx*cl.s,ry*cl.s,0,0,7); ctx.fill(); });
+    ctx.strokeStyle='rgba(38,33,26,.14)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px-46*cl.s,cl.y+15*cl.s); ctx.lineTo(px+50*cl.s,cl.y+15*cl.s); ctx.stroke();
+  });
+  // 远山两层（x 视差，垂直锚定地面 → 不会漂浮）
+  const hillY=(H,hd)=>-26-(hd.base+hd.amp1*Math.sin(H*.0019+hd.ph)+hd.amp2*Math.sin(H*.0043+hd.ph*2));
+  HILLS.forEach(hd=>{
+    const offX=G.cam.x*(1-hd.f)-(WX/2)*(1-hd.f);
+    ctx.fillStyle=hd.c; ctx.beginPath();
+    const x0=vb.x0-40,x1=vb.x1+40;
+    ctx.moveTo(x0,60);
+    for(let x=x0;x<=x1;x+=30) ctx.lineTo(x, hillY(x+offX,hd));
+    ctx.lineTo(x1,60); ctx.closePath(); ctx.fill();
+  });
+  { // 远景花田（撒在第二重山脊上，随山视差）
+    const hd=HILLS[1], offX=G.cam.x*(1-hd.f)-(WX/2)*(1-hd.f);
+    FARDOTS.forEach(d=>{
+      const px=d.hx-offX;
+      if(px<vb.x0-10||px>vb.x1+10)return;
+      const py=hillY(d.hx,hd)+3+((d.hx*7.3)%14);
+      ctx.fillStyle=hexA(d.c,.55);
+      ctx.fillRect(px-d.s/2, py, d.s, d.s);
+    });
+  }
+  // 地面草甸（世界锚定）
+  ctx.fillStyle='#DCD6C0'; ctx.beginPath();
+  ctx.moveTo(vb.x0-20,60);
+  for(let x=vb.x0-20;x<=vb.x1+20;x+=24) ctx.lineTo(x,gy(x)-42);
+  ctx.lineTo(vb.x1+20,60); ctx.closePath(); ctx.fill();
+  // 群落地面光晕 + 光柱
+  G.comms.forEach(c=>{
+    const cy=gy(c.cx);
+    const rad=(c.maxX-c.minX)/2+120;
+    const g3=ctx.createRadialGradient(c.cx,cy,10,c.cx,cy,rad);
+    g3.addColorStop(0,hexA(c.sp.pal[0],c.level>=5?.16:.09)); g3.addColorStop(1,hexA(c.sp.pal[0],0));
+    ctx.fillStyle=g3; ctx.beginPath(); ctx.ellipse(c.cx,cy,rad,rad*.4,0,0,7); ctx.fill();
+    if(c.level>=5){
+      ctx.fillStyle=hexA('#D0A63E',.05);
+      for(let k=-1;k<=1;k++){ ctx.save(); ctx.translate(c.cx+k*rad*.4,cy);
+        ctx.rotate(k*.12+Math.sin(G.t*.3+k)*.03);
+        ctx.fillRect(-26,-560,52,560); ctx.restore(); }
+    }
+  });
+  // 草簇
+  G.tufts.forEach(tf=>{
+    if(tf.x<vb.x0-10||tf.x>vb.x1+10)return;
+    ctx.strokeStyle=tf.c; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(tf.x,tf.y);
+    ctx.quadraticCurveTo(tf.x+tf.a*4,tf.y-tf.l*.6,tf.x+tf.a*7+Math.sin(G.t+tf.x)*1.2,tf.y-tf.l);
+    ctx.stroke();
+    if(tf.fl){ ctx.fillStyle='#F2EFE6'; ctx.beginPath(); ctx.arc(tf.x+tf.a*7,tf.y-tf.l-1.5,1.7,0,7); ctx.fill(); }
+  });
+  // 沉积残骸/花瓣
+  G.settled.forEach(s=>{ if(s.x<vb.x0||s.x>vb.x1)return;
+    ctx.fillStyle=s.c; ctx.fillRect(s.x,s.y,s.s,s.s); });
+  // ---- 土壤 + 根系（静态画布，世界锚定：滚动缩放全同步） ----
+  if(vb.y1>SOIL_TOP){
+    ctx.drawImage(soilCv,0,SOIL_TOP);
+    // 植株根系（动态）
+    G.plants.forEach(p=>{
+      if(p.x<vb.x0-300||p.x>vb.x1+300)return;
+      const a=clamp(p.att/16,.25,1);
+      drawRootPathLive(ctx,p.rootPts,3.2*p.scale,1.4,'#7A5B3A','#503A22',a);
+    });
+    // 层界标签（跟随视口左缘）
+    if(z>.45){
+      ctx.font=`${10/z}px ui-monospace,Menlo,monospace`;
+      LAYERS.forEach(L=>{
+        if(L.y0<vb.y0-40||L.y0>vb.y1+40)return;
+        const lx=vb.x0+14/z;
+        ctx.fillStyle='rgba(240,230,212,.75)';
+        ctx.fillText('−'+Math.round((L.y0-SURF)*0.8)+' m  '+L.zh+' '+L.en, lx, L.y0+16/z);
+      });
+    }
+    // 节点动态：LED / 计数 / 忙碌光晕
+    NODES.forEach(nd=>{
+      if(nd.x<vb.x0-120||nd.x>vb.x1+120||nd.y<vb.y0-80||nd.y>vb.y1+80)return;
+      const on=Math.sin(G.t*3+nd.ph)>0;
+      ctx.fillStyle=(on||nd.busy>.4)?'#C8502A':'#5B4A32';
+      ctx.fillRect(nd.x-nd.w/2+4,nd.y-nd.h/2+4,3.4,3.4);
+      ctx.fillStyle=(nd.busy>.15)?'#6E8A58':'#4A3A26';
+      ctx.fillRect(nd.x-nd.w/2+4,nd.y-nd.h/2+10,3.4,3.4);
+      if(nd.busy>.05){ ctx.strokeStyle=hexA(nd.kind==='gpu'?'#E8B84B':'#C9B896',.5*nd.busy);
+        ctx.lineWidth=1.4; ctx.strokeRect(nd.x-nd.w/2-3,nd.y-nd.h/2-3,nd.w+6,nd.h+6); }
+      ctx.fillStyle='#9A8B72'; ctx.font='7.5px ui-monospace,Menlo,monospace';
+      ctx.textAlign='right';
+      ctx.fillText(String(nd.count), nd.x+nd.w/2-4, nd.y+3);
+      ctx.textAlign='left';
+      if(nd.kind==='gpu'&&nd.busy>.1){ // 热浪
+        for(let k=0;k<3;k++){ const hy2=nd.y-nd.h/2-6-((G.t*26+k*17)%36);
+          ctx.strokeStyle=hexA('#E8B84B',.25*nd.busy*(1-((G.t*26+k*17)%36)/36));
+          ctx.beginPath(); ctx.arc(nd.x-14+k*14,hy2,4,Math.PI,0); ctx.stroke(); } }
+    });
+    // 冷却环流动
+    ctx.save(); ctx.setLineDash([5,11]); ctx.lineDashOffset=-G.t*26;
+    ctx.strokeStyle=hexA('#7FD0C8',.6); ctx.lineWidth=1.4;
+    COOL.forEach(loop=>{ ctx.beginPath();
+      loop.forEach((p2,i)=>i?ctx.lineTo(p2.x,p2.y):ctx.moveTo(p2.x,p2.y));
+      ctx.closePath(); ctx.stroke(); });
+    ctx.restore();
+    // 电网闪流
+    ctx.save(); ctx.setLineDash([2,17]); ctx.lineDashOffset=-G.t*60;
+    ctx.strokeStyle=hexA('#E8B84B',.7); ctx.lineWidth=1.6;
+    VEINS.forEach(vn=>{ ctx.beginPath();
+      vn.forEach((p2,i)=>i?ctx.lineTo(p2.x,p2.y):ctx.moveTo(p2.x,p2.y)); ctx.stroke(); });
+    ctx.restore();
+    // 基岩铭文
+    if(vb.y1>940){ ctx.fillStyle='rgba(240,230,212,.4)';
+      ctx.font=`${11/z}px ui-monospace,Menlo,monospace`; ctx.textAlign='center';
+      ctx.fillText('计算代谢 COMPUTATIONAL METABOLISM — 累计 '+S.energy.toFixed(1)+' Wh · 实时 '+S.power.toFixed(0)+' W', WX/2, 1000);
+      ctx.textAlign='left'; }
+  }
+  // 脉冲
+  G.pulses.forEach(pl=>{
+    const k=pl.t*(pl.pts.length-1), i0=Math.floor(k), fr=k-i0;
+    const a=pl.pts[i0], b=pl.pts[Math.min(i0+1,pl.pts.length-1)];
+    const px=lerp(a.x,b.x,fr), py=lerp(a.y,b.y,fr);
+    if(px<vb.x0||px>vb.x1||py<vb.y0||py>vb.y1)return;
+    ctx.fillStyle=pl.color;
+    ctx.fillRect(px-pl.size/2,py-pl.size/2,pl.size,pl.size);
+    ctx.fillStyle=hexA(pl.color,.3);
+    ctx.fillRect(px-pl.size*1.5,py-pl.size*1.5,pl.size*3,pl.size*3);
+  });
+  // ---- 植株（按景深排序） ----
+  const order=[...G.plants].sort((a,b)=>a.baseY-b.baseY);
+  order.forEach(p=>{
+    if(p.x<vb.x0-160||p.x>vb.x1+160)return;
+    if(p.baseY-p.h-p.hs>vb.y1+60||p.baseY<vb.y0-60)return;
+    drawPlant(ctx,p);
+  });
+  // 蝴蝶
+  G.flies.forEach(f=>{ if(f.x<vb.x0-30||f.x>vb.x1+30||f.y<vb.y0-30||f.y>vb.y1+30)return;
+    drawButterfly(ctx,f); });
+  // 粒子
+  const P=G.parts;
+  P.sparks.forEach(s=>{ ctx.globalAlpha=s.life; ctx.fillStyle='#E8B84B';
+    ctx.fillRect(s.x-1.5,s.y-1.5,3,3); });
+  P.motes.forEach(m=>{ ctx.globalAlpha=m.life*.8; ctx.fillStyle=m.c;
+    ctx.fillRect(m.x-1.2,m.y-1.2,2.4,2.4); });
+  P.petals.forEach(pt=>{ ctx.save(); ctx.globalAlpha=.95; ctx.translate(pt.x,pt.y); ctx.rotate(pt.rot);
+    ctx.fillStyle=pt.c; ctx.beginPath(); ctx.ellipse(0,0,pt.s,pt.s*.55,0,0,7); ctx.fill(); ctx.restore(); });
+  P.seeds.forEach(sd=>{ ctx.globalAlpha=1; ctx.fillStyle='#5B4632';
+    ctx.beginPath(); ctx.ellipse(sd.x,sd.y,2.6,3.4,Math.sin(G.t*3+sd.ph)*.4,0,7); ctx.fill();
+    ctx.fillStyle=hexA('#E8B84B',.5); ctx.fillRect(sd.x-1,sd.y-6,1.6,1.6); });
+  ctx.globalAlpha=1;
+  // 潮流旗帜
+  G.comms.forEach(c=>{
+    if(c.level<3)return;
+    const fy=c.topY-56+Math.sin(G.t*.8+c.cx)*3;
+    const label='潮流 TREND · '+c.sp.nameCN+' ×'+c.level;
+    ctx.font='10px ui-monospace,Menlo,monospace';
+    const tw=ctx.measureText(label).width+16;
+    ctx.strokeStyle='rgba(38,33,26,.6)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(c.cx,fy+12); ctx.lineTo(c.cx,fy+42); ctx.stroke();
+    ctx.fillStyle=c.level>=5?'#26211A':hexA('#26211A',.82);
+    ctx.fillRect(c.cx-tw/2,fy-8,tw,20);
+    ctx.fillStyle='#EDEAE3'; ctx.textAlign='center';
+    ctx.fillText(label,c.cx,fy+6); ctx.textAlign='left';
+    if(c.level>=5){ ctx.strokeStyle=c.sp.pal[0]; ctx.lineWidth=1.2;
+      wobble(ctx,c.cx,fy+2,tw*.62,c.cx,3); ctx.stroke(); }
+  });
+  ctx.restore();
+  // 播种模式提示（屏幕空间）
+  if(G.shelfSel&&G.mouse.in){
+    const mwp=s2w(G.mouse.x,G.mouse.y);
+    const okY=mwp[1]>gy(mwp[0])-38&&mwp[1]<gy(mwp[0])+20;
+    ctx.strokeStyle=okY?'rgba(110,138,88,.9)':'rgba(38,33,26,.35)';
+    ctx.setLineDash([4,4]); ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.arc(G.mouse.x,G.mouse.y,16,0,7); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=okY?'rgba(110,138,88,.9)':'rgba(38,33,26,.5)';
+    ctx.font='9px ui-monospace,Menlo,monospace';
+    ctx.fillText(okY?'点击播种 PLANT':'请点击草地土壤',G.mouse.x+20,G.mouse.y+3);
+  }
+}
+function drawRootPathLive(ctx,pts,w0,w1,c0,c1,alpha){
+  ctx.globalAlpha=alpha;
+  for(let i=1;i<pts.length;i++){ const t=i/(pts.length-1);
+    ctx.strokeStyle=mixHex(c0,c1,t); ctx.lineWidth=lerp(w0,w1,t); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(pts[i-1].x,pts[i-1].y); ctx.lineTo(pts[i].x,pts[i].y); ctx.stroke(); }
+  ctx.globalAlpha=1;
+}
+
+/* ============================================================
+   GARDEN — 交互
+   ============================================================ */
+cG.addEventListener('pointerdown',e=>{ cG.setPointerCapture(e.pointerId);
+  G.mouse.x=e.offsetX; G.mouse.y=e.offsetY; G.mouse.in=true;
+  G.drag={sx:e.offsetX,sy:e.offsetY,cx:G.cam.x,cy:G.cam.y,moved:0}; });
+cG.addEventListener('pointermove',e=>{
+  G.mouse.x=e.offsetX; G.mouse.y=e.offsetY; G.mouse.in=true;
+  if(G.drag){ const dx=e.offsetX-G.drag.sx, dy=e.offsetY-G.drag.sy;
+    G.drag.moved=Math.max(G.drag.moved,Math.hypot(dx,dy));
+    if(G.drag.moved>4){ G.camGoal=null;
+      G.cam.x=clamp(G.drag.cx-dx/G.cam.z,200,WX-200);
+      G.cam.y=clamp(G.drag.cy-dy/G.cam.z,-520,980); } } });
+cG.addEventListener('pointerleave',()=>G.mouse.in=false);
+cG.addEventListener('pointerup',e=>{
+  const wasClick=G.drag&&G.drag.moved<5; G.drag=null;
+  if(!wasClick)return;
+  const [wx,wy]=s2w(e.offsetX,e.offsetY);
+  // 节点？
+  let nd=NODES.find(n=>Math.abs(wx-n.x)<n.w/2+12&&Math.abs(wy-n.y)<n.h/2+12);
+  if(nd){ G.selNode=nd; refreshCardN(); $('cardN').classList.add('on'); return; }
+  // 植株？
+  let best=null,bd=1e9;
+  G.plants.forEach(p=>{
+    const hw=44*p.scale+p.hs*.6, top=p.baseY-p.h-p.hs-34;
+    if(wx>p.x-hw&&wx<p.x+hw&&wy>top&&wy<p.baseY+24){
+      const d=Math.abs(wx-p.x); if(d<bd){bd=d;best=p;} } });
+  if(best){ G.sel=best; refreshCardG(); $('cardG').classList.add('on'); return; }
+  // 播种？
+  if(G.shelfSel&&wy>gy(wx)-38&&wy<gy(wx)+20){
+    const r=clamp((wy-gy(wx)+30)/42,0,1);
+    let seed=null;
+    if(G.shelfSel.startsWith('q:')){
+      const key=G.shelfSel.slice(2);
+      const idx=S.queue.findIndex(q=>q.art.style+'-'+q.art.palIdx===key);
+      if(idx>=0){ seed=S.queue.splice(idx,1)[0]; shelfDirty=true; }
+      else { G.shelfSel=null; shelfDirty=true; }
+    } else {
+      const pk=PACKETS[+G.shelfSel.slice(2)];
+      const art=makeArt();
+      seed={art, type:pickType(), model:pick(MODELS.image)};
+      if(pk&&Math.random()<.5) seed.art=pk.art;
+    }
+    if(seed){
+      const p=plantAt(seed, clamp(wx,100,WX-100), r, 0);
+      if(p){ S.generated++; toast('已播种 '+p.id+' · '+p.sp.nameCN+' · 成本 +'+p.type.gen.toFixed(2)+' Wh');
+        for(let k=0;k<5;k++)G.parts.sparks.push({x:wx+R(-8,8),y:wy,vy:-R(6,14),life:1}); }
+      else toast('此处无法生根（空间或同种已满）');
+    }
+    return;
+  }
+  G.sel=null; $('cardG').classList.remove('on');
+  G.selNode=null; $('cardN').classList.remove('on');
+});
+cG.addEventListener('wheel',e=>{ e.preventDefault(); G.camGoal=null;
+  if(e.ctrlKey||e.metaKey){
+    const [wx,wy]=s2w(e.offsetX,e.offsetY);
+    G.cam.z=clamp(G.cam.z*Math.exp(-e.deltaY*0.0016),0.55,1.75);
+    const [nx,ny]=s2w(e.offsetX,e.offsetY);
+    G.cam.x=clamp(G.cam.x+(wx-nx),200,WX-200); G.cam.y=clamp(G.cam.y+(wy-ny),-520,980);
+  } else if(e.shiftKey){
+    G.cam.x=clamp(G.cam.x+e.deltaY*1.2/G.cam.z,200,WX-200);
+  } else {
+    G.cam.y=clamp(G.cam.y+e.deltaY*1.1/G.cam.z,-520,980);
+    G.cam.x=clamp(G.cam.x+e.deltaX*1.1/G.cam.z,200,WX-200);
+  }
+},{passive:false});
+$('btnSow').onclick=()=>{
+  const p=plantAt();
+  if(p){ S.generated++; toast('随机播种 '+p.id+' · '+p.sp.nameCN); }
+  else toast('花园已满 · 空间竞争加剧');
+};
+$('btnSurface').onclick=()=>{ G.camGoal={y:-58}; };
+$('btnRoots').onclick=()=>{ G.camGoal={y:430}; };
+$('btnLapse').onclick=function(){ G.lapse=!G.lapse; this.classList.toggle('on',G.lapse);
+  toast(G.lapse?'时光加速 ×4':'恢复自然节律'); };
+
+function refreshCardG(){ const p=G.sel; if(!p)return;
+  $('cgTitle').textContent=p.id+' · 物种档案 SPECIES';
+  const st=STG[p.stage];
+  const state=p.stage===9?'凋零中 WITHER':(p.wilt>0.2?'缺乏注意力 WILTING':(p.comm>=3?'群落成员 · 潮流中':'健康 HEALTHY'));
+  rows($('cgRows'),[
+    ['作品 WORK', p.art.title],
+    ['物种 SPECIES', `<i class="swatch" style="background:${p.sp.pal[0]}"></i>${p.sp.nameCN} ${p.sp.nameEN}`],
+    ['生成模型 MODEL', p.model+' · '+p.type.zh],
+    ['诞生 BORN', fmtT(p.born)],
+    ['阶段 STAGE', `${st.zh} ${st.en} ${p.stage}/9`],
+    ['分枝 BRANCH', p.branches.length+' · 落种 '+p.seedsDropped],
+    ['注意力 ATT', p.att.toFixed(1)],
+    ['计算成本 COMPUTE', p.energy.toFixed(2)+' Wh'],
+    ['生态状态 STATE', state]
+  ]);
+}
+function refreshCardN(){ const nd=G.selNode; if(!nd)return;
+  $('cnTitle').textContent=nd.zh+' · 代谢档案';
+  const layer=LAYERS.find(L=>nd.y>=L.y0&&nd.y<L.y1);
+  const KV={
+    route:[['职能 ROLE','行为信号路由转发'],['吞吐 THROUGHPUT',nd.count+' pkt'],['延迟 LATENCY',(2+Math.sin(G.t)*.5).toFixed(1)+' ms'],['功率 POWER','6 W']],
+    cache:[['职能 ROLE','缓存 · 推荐排序'],['队列 QUEUE',nd.count+' pkt'],['命中率 HIT',(82+Math.sin(G.t*.7)*6).toFixed(0)+' %'],['功率 POWER','14 W']],
+    gpu:[['职能 ROLE','模型推理 · 生成计算'],['批次 BATCH',nd.count+' 次'],['负载 LOAD',(nd.busy*100).toFixed(0)+' %'],['温度 TEMP',(52+nd.busy*26).toFixed(0)+' °C'],['冷却 COOLING','液冷环路'],['功率 POWER',(90+nd.busy*160).toFixed(0)+' W']],
+    sub:[['职能 ROLE','变电 · 能源供给'],['电网 GRID','骨干电网 GRID·A'],['实时功率 POWER',S.power.toFixed(0)+' W'],['累计能耗 TOTAL',S.energy.toFixed(1)+' Wh']]
+  }[nd.kind]||[];
+  rows($('cnRows'),[['层位 LAYER',layer?layer.zh:'—'],...KV]);
+}
+
+/* ============================================================
+   tabs / HUD / main loop
+   ============================================================ */
+const HINTS={
+  bloom:'拖拽平移 · 滚轮缩放 · 悬停注视喂养 · 点击收藏 — 注意力 ≥42 自动迁入花园',
+  garden:'悬停浇灌 · 点选种子再点土壤播种 · 滚轮上下潜行 · Ctrl+滚轮缩放 · 点击节点看代谢'
+};
+function setPage(p){
+  activePage=p;
+  $('pageBloom').classList.toggle('hidden',p!=='bloom');
+  $('pageGarden').classList.toggle('hidden',p!=='garden');
+  $('tabBloom').classList.toggle('on',p==='bloom');
+  $('tabGarden').classList.toggle('on',p==='garden');
+  $('hint').textContent=HINTS[p];
+  if(p==='garden'){ xG=fit(cG); } else { xB=fit(cB); }
+}
+$('tabBloom').onclick=()=>setPage('bloom');
+$('tabGarden').onclick=()=>setPage('garden');
+$('hint').textContent=HINTS.bloom;
+
+let hudAcc=0;
+function updateHUD(dt){
+  hudAcc+=dt; if(hudAcc<0.15)return; hudAcc=0;
+  $('stGen').textContent=S.generated;
+  $('stMig').textContent=S.migrated;
+  $('stDeb').textContent=S.debris;
+  $('stEng').textContent=S.energy.toFixed(1);
+  $('stPow').textContent=S.power.toFixed(0);
+  $('meterFill').style.width=S.att.toFixed(1)+'%';
+  $('meterNum').textContent=Math.round(S.att);
+  $('meter').classList.toggle('low',S.att<22);
+  if(B.sel&&activePage==='bloom')refreshCardB();
+  if(G.sel&&activePage==='garden')refreshCardG();
+  if(G.selNode&&activePage==='garden')refreshCardN();
+  if(shelfDirty){ shelfDirty=false; rebuildShelf(); }
+  // 深度仪
+  if(activePage==='garden'){
+    const d=G.cam.y<SURF?0:Math.round((G.cam.y-SURF)*0.8);
+    $('dVal').textContent=(d>0?'−':'')+d+' m';
+    const L=G.cam.y<SURF?null:LAYERS.find(L2=>G.cam.y>=L2.y0&&G.cam.y<L2.y1);
+    $('dLayer').textContent=L?L.zh:'地表 · 花园';
+    $('dCursor').style.top=(clamp((G.cam.y+520)/1500,0,1)*123)+'px';
+  }
+}
+// 悬停高亮标记
+function markHover(){
+  G.plants.forEach(p=>p._hov=false);
+  if(activePage!=='garden'||!G.mouse.in||G.drag)return;
+  const [wx,wy]=s2w(G.mouse.x,G.mouse.y);
+  let best=null,bd=1e9;
+  G.plants.forEach(p=>{
+    const hw=44*p.scale+p.hs*.6, top=p.baseY-p.h-p.hs-34;
+    if(wx>p.x-hw&&wx<p.x+hw&&wy>top&&wy<p.baseY+24){
+      const d=Math.abs(wx-p.x); if(d<bd){bd=d;best=p;} } });
+  if(best)best._hov=true;
+}
+
+let lastT=performance.now();
+const VT=!!Q.get('vt');   // 测试模式：virtual-time 驱动（无头截图用）
+function frame(now){
+  const dt=Math.min(.05,(now-lastT)/1000); lastT=now;
+  let drain=0;
+  if(activePage==='bloom'){ drain=updateBloom(dt); }
+  drain+=updateGarden(dt);           // 花园是持续存在的生态，始终运行
+  markHover();
+  if(activePage==='bloom')renderBloom(); else renderGarden();
+  drain=Math.min(drain, 20*dt);
+  S.att=clamp(S.att+dt*4.8-drain,0,100);
+  updateHUD(dt);
+  if(!VT)requestAnimationFrame(frame);
+}
+rebuildShelf();
+if(VT) setInterval(()=>frame(performance.now()),16);
+else requestAnimationFrame(frame);
+
+$('enter').onclick=()=>$('intro').remove();
+
+/* ---- 调试/直达参数：?skip=1&page=garden&camy=430&warp=120 ---- */
+(function(){
+  if(Q.get('skip'))$('intro').remove();
+  if(Q.get('page')==='garden')setPage('garden');
+  const warp=+Q.get('warp')||0;
+  if(warp>0){ for(let i=0;i<warp*2;i++)updateGarden(.5); }
+  if(Q.get('camy')!==null&&Q.get('camy')!==undefined&&Q.get('camy')!=='')G.cam.y=+Q.get('camy');
+  if(Q.get('camx'))G.cam.x=+Q.get('camx');
+  if(Q.get('camz'))G.cam.z=+Q.get('camz');
+  if(Q.get('storm'))B.stormUntil=Date.now()+8000;
+  if(Q.get('probe'))setInterval(()=>{ document.title='F'+G.flies.length+' C'+G.comms.length+' '+
+    ('P'+G.plants.length+' Pu'+G.pulses.length+' Se'+G.settled.length+' Fly'+G.flies.length); },400);
+})();
+
+</script>
+</body>
+</html>
