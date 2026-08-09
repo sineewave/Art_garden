@@ -115,11 +115,19 @@ def signature(im):
     return v / n if n > 1e-6 else v
 
 
-def color_hist(im):
-    a = np.asarray(im.resize((32, 32), LANCZOS), dtype=np.float32) / 255.0
-    q = np.clip((a * 3).astype(np.int32), 0, 2)
+def spatial_color(im, g=4):
+    """4×4 网格的平均 RGB —— 同时编码构图与色彩布局，实测最有区分力。"""
+    a = np.asarray(im.resize((g, g), LANCZOS), dtype=np.float32).ravel() / 255.0
+    return a / max(np.linalg.norm(a), 1e-6)
+
+
+def hsv_hist(im):
+    """HSV 直方图（色相 6 × 饱和 3 × 明度 3）—— 比 RGB 更贴近人的分组直觉。"""
+    a = np.asarray(im.convert("HSV").resize((32, 32), LANCZOS), dtype=np.float32) / 255.0
+    q = np.clip((a * np.array([6, 3, 3], dtype=np.float32)).astype(np.int32),
+                0, np.array([5, 2, 2], dtype=np.int32))
     idx = q[..., 0] * 9 + q[..., 1] * 3 + q[..., 2]
-    h = np.bincount(idx.ravel(), minlength=27).astype(np.float32)
+    h = np.bincount(idx.ravel(), minlength=54).astype(np.float32)
     return h / max(h.sum(), 1.0)
 
 
@@ -147,7 +155,7 @@ def main():
 
     # ---------- 第一遍：缩略图 + 特征 ----------
     print("[1/3] 生成缩略图与特征")
-    keep, thumbs, sigs, hists, prompts = [], [], [], [], []
+    keep, thumbs, sigs, spats, hsvs, prompts, models = [], [], [], [], [], [], []
     skipped = 0
     for i, r in enumerate(recs):
         try:
@@ -168,8 +176,10 @@ def main():
             skipped += 1
             continue
         keep.append(r); thumbs.append(th)
-        sigs.append(signature(th)); hists.append(color_hist(th))
+        sigs.append(signature(th))
+        spats.append(spatial_color(th)); hsvs.append(hsv_hist(th))
         prompts.append(r.get("prompt") or "")
+        models.append((r.get("model") or r.get("base_model") or "").strip())
         if (i + 1) % 100 == 0:
             print(f"    {i+1}/{len(recs)}")
 
@@ -177,13 +187,22 @@ def main():
         sys.exit("没有可用素材")
 
     # ---------- 第二遍：聚类 ----------
-    print(f"\n[2/3] 聚类 k={args.k}（提示词 {args.w_prompt:.2f} + 外观 {1-args.w_prompt:.2f}）")
+    cov = sum(1 for x in prompts if x.strip()) / max(1, len(prompts))
     P, terms = CL.prompt_matrix(prompts)
-    V = CL.visual_matrix(sigs, hists)
     a = args.w_prompt
-    X = np.hstack([P * a, V * (1 - a)]) if P.shape[1] else V
+    if cov < 0.15 or not P.shape[1]:
+        # Civitai 的 /images 端点不返回 prompt（实测覆盖率 0%），自动退回纯外观
+        a = 0.0
+        print(f"\n[2/3] 聚类 k={args.k} —— 提示词覆盖率仅 {cov*100:.0f}%，"
+              f"自动改用纯外观通道")
+    else:
+        print(f"\n[2/3] 聚类 k={args.k}（提示词 {a:.2f} + 外观 {1-a:.2f}，"
+              f"提示词覆盖率 {cov*100:.0f}%）")
+    V = CL.visual_matrix(sigs, spats, hsvs)
+    X = np.hstack([P * a, V * (1 - a)]) if (a > 0 and P.shape[1]) else V
     lab, _ = CL.kmeans(X, args.k)
-    labels = CL.label_clusters(lab, P, terms, args.k)
+    labels = CL.label_clusters(lab, P, terms, args.k, models)
+    mtab = CL.cluster_model_table(lab, models, args.k)
 
     order = np.argsort(lab, kind="stable")   # 同簇相邻密铺
     div_all = CL.diversity(X)
@@ -252,6 +271,12 @@ def main():
     for j in sorted(sizes, key=lambda x: -sizes[x]):
         bar = "█" * max(1, round(sizes[j] / max(sizes.values()) * 34))
         lines.append(f"  #{j}  n={sizes[j]:<5} {bar}  {labels.get(j,'') or '（无提示词）'}")
+    lines.append("")
+    lines.append("每簇的主导生成模型（视觉聚类 × 模型族的交叉验证）：")
+    for j in sorted(sizes, key=lambda x: -sizes[x]):
+        tops = mtab.get(j) or []
+        txt = "，".join(f"{n} ×{c}" for n, c in tops) or "—"
+        lines.append(f"  #{j}  {txt}")
     lines.append("")
     if div_all is not None:
         lines.append(f"整体多样性（平均两两距离，越低越同质）：{div_all:.4f}")

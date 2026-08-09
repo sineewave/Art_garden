@@ -151,6 +151,56 @@ def is_safe(rec):
     return lv in SAFE_LEVELS
 
 
+MODEL_CACHE_PATH = "data/model_cache.json"
+MODEL_CACHE = {}
+
+
+def load_model_cache():
+    global MODEL_CACHE
+    try:
+        MODEL_CACHE = json.load(open(MODEL_CACHE_PATH, encoding="utf-8"))
+    except Exception:
+        MODEL_CACHE = {}
+
+
+def save_model_cache():
+    try:
+        os.makedirs(os.path.dirname(MODEL_CACHE_PATH), exist_ok=True)
+        json.dump(MODEL_CACHE, open(MODEL_CACHE_PATH, "w", encoding="utf-8"),
+                  ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def dedupe_doubled(s2):
+    """接口偶尔返回 'Krea 2Krea 2' 这种重复串，切回单份。"""
+    s2 = (s2 or "").strip()
+    h = len(s2) // 2
+    if len(s2) > 3 and len(s2) % 2 == 0 and s2[:h] == s2[h:]:
+        return s2[:h]
+    return s2
+
+
+def resolve_model_name(rec, api_key, budget):
+    """把 modelVersionIds 换成具体模型名（如 Pony Diffusion V6 XL）。
+    baseModel 只到家族级（Pony / Illustrious），具体名字信息量大得多。"""
+    ids = rec.get("model_version_ids") or []
+    if not ids:
+        return ""
+    key = str(ids[0])
+    if key in MODEL_CACHE:
+        return MODEL_CACHE[key]
+    if budget["left"] <= 0:
+        return ""
+    budget["left"] -= 1
+    mv = http_json(f"https://civitai.com/api/v1/model-versions/{key}", api_key, tries=2)
+    name = ""
+    if mv:
+        name = (mv.get("model") or {}).get("name") or mv.get("name") or ""
+    MODEL_CACHE[key] = dedupe_doubled(name)[:120]
+    return MODEL_CACHE[key]
+
+
 def norm(item):
     """把 API 返回压成我们自己的 schema。所有字段都当作可能缺失来处理。"""
     meta = item.get("meta") or {}
@@ -163,7 +213,7 @@ def norm(item):
                 break
     # meta 为空时的兜底：item 顶层的 baseModel 是真实可用的模型标签
     if not model:
-        model = item.get("baseModel") or ""
+        model = dedupe_doubled(item.get("baseModel") or "")
     likes = sum(int(stats.get(k) or 0) for k in
                 ("likeCount", "heartCount", "laughCount", "cryCount"))
     return {
@@ -185,7 +235,7 @@ def norm(item):
         "seed": meta.get("seed") or 0,
         "likes": likes,
         "comments": int(stats.get("commentCount") or 0),
-        "base_model": item.get("baseModel") or "",
+        "base_model": dedupe_doubled(item.get("baseModel") or ""),
         "model_version_ids": item.get("modelVersionIds") or [],
         "post_id": item.get("postId") or 0,
         "username": item.get("username") or "",
@@ -342,6 +392,10 @@ def main():
     ap.add_argument("--max-video-mb", type=float, default=8.0,
                     help="单个视频体积上限，超过直接跳过")
     ap.add_argument("--sleep", type=float, default=0.7, help="每页之间的间隔秒")
+    ap.add_argument("--no-resolve-models", action="store_true",
+                    help="不去换取具体模型名（只用 baseModel 家族名）")
+    ap.add_argument("--model-lookups", type=int, default=400,
+                    help="换取模型名的最大请求数（结果会缓存复用）")
     args = ap.parse_args()
 
     if args.probe:
@@ -350,6 +404,9 @@ def main():
     if args.probe_meta:
         probe_meta(args.api_key)
         return
+
+    load_model_cache()
+    mbudget = {"left": args.model_lookups}
 
     os.makedirs(RAW, exist_ok=True)
     os.makedirs(os.path.dirname(META), exist_ok=True)
@@ -410,6 +467,10 @@ def main():
                         continue
                 rec["file"] = path
                 rec["type"] = "video" if is_video else "image"
+                if not args.no_resolve_models:
+                    mn = resolve_model_name(rec, args.api_key, mbudget)
+                    if mn:
+                        rec["model"] = mn
                 seen.add(rec["id"])
                 out.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 out.flush()
@@ -426,6 +487,7 @@ def main():
             time.sleep(args.sleep)
 
     out.close()
+    save_model_cache()
     print(f"\n完成：新增 {got} 条 → {META}")
     print(f"  跳过：分级不安全 {nsfw_skipped} 条，体积超限 {big_skipped} 条")
     if got:
