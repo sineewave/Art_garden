@@ -98,12 +98,21 @@ def diagnose_http_error(e):
             print("      ⇒ 判定：站点自身不可用，过一阵重试即可", flush=True)
 
 
+TRANSFORM_SEG = re.compile(r"^(original|width|height|anim|quality|fit|optimized)=", re.I)
+
+
 def shrink_url(url, width=512):
-    """Civitai 的 CDN 路径里带 /width=NNN/，改小它能把下载量降一个数量级。"""
-    if "/width=" in url:
-        return re.sub(r"/width=\d+", f"/width={width}", url)
-    if "image.civitai.com" in url:
-        parts = url.rstrip("/").split("/")
+    """Civitai CDN 路径里有一段变换参数，可能是 width=N，也可能是 original=true。
+    统一替换成 width=<width> —— 不改的话会按原图下载，体积差一个数量级。"""
+    if "image.civitai.com" not in url:
+        return url
+    parts = url.split("/")
+    for i, seg in enumerate(parts):
+        if TRANSFORM_SEG.match(seg):
+            parts[i] = f"width={width}"
+            return "/".join(parts)
+    # 没有变换段：插在文件名之前
+    if len(parts) > 1:
         return "/".join(parts[:-1] + [f"width={width}", parts[-1]])
     return url
 
@@ -152,6 +161,9 @@ def norm(item):
             if r.get("type") == "model" and r.get("name"):
                 model = r["name"]
                 break
+    # meta 为空时的兜底：item 顶层的 baseModel 是真实可用的模型标签
+    if not model:
+        model = item.get("baseModel") or ""
     likes = sum(int(stats.get(k) or 0) for k in
                 ("likeCount", "heartCount", "laughCount", "cryCount"))
     return {
@@ -173,6 +185,11 @@ def norm(item):
         "seed": meta.get("seed") or 0,
         "likes": likes,
         "comments": int(stats.get("commentCount") or 0),
+        "base_model": item.get("baseModel") or "",
+        "model_version_ids": item.get("modelVersionIds") or [],
+        "post_id": item.get("postId") or 0,
+        "username": item.get("username") or "",
+        "browsing_level": item.get("browsingLevel", ""),
         "nsfw_level": item.get("nsfwLevel") or item.get("nsfw") or "",
         "license": "Civitai user upload — see source url",
         "has_stats": bool(stats),
@@ -221,10 +238,103 @@ def probe(api_key):
     print("\n把以上输出发我，字段对不上我立刻改。没问题就直接开跑正式抓取。")
 
 
+def probe_meta(api_key):
+    """专门追查生成参数：meta 是普遍缺失，还是只是这几条恰好隐藏？
+    并测试 API Key 能否解锁、以及模型名有没有别的取法。"""
+    print("=" * 60)
+    print("A. 大样本统计 meta 覆盖率（100 条，跨三种排序）")
+    print("=" * 60)
+    total = with_meta = with_prompt = with_stats = with_base = 0
+    seen_base = {}
+    for sort, period in [("Most Reactions", "Week"), ("Newest", "Day"),
+                         ("Most Reactions", "AllTime")]:
+        q = {"limit": 100, "sort": sort, "period": period, "nsfw": "None"}
+        d = http_json(f"{API}?{urllib.parse.urlencode(q)}", api_key)
+        if not d:
+            continue
+        items = d.get("items") or []
+        n = m = pr = st = bm = 0
+        for it in items:
+            n += 1
+            me = it.get("meta") or {}
+            if me:
+                m += 1
+            if me.get("prompt"):
+                pr += 1
+            if it.get("stats"):
+                st += 1
+            b = it.get("baseModel")
+            if b:
+                bm += 1
+                seen_base[b] = seen_base.get(b, 0) + 1
+        total += n; with_meta += m; with_prompt += pr; with_stats += st; with_base += bm
+        print(f"  {sort:>15} / {period:<8}  n={n:<4} meta {m:<4} prompt {pr:<4} "
+              f"stats {st:<4} baseModel {bm}")
+    if total:
+        print(f"\n  合计 n={total}：meta {with_meta/total*100:.0f}%  "
+              f"prompt {with_prompt/total*100:.0f}%  "
+              f"stats {with_stats/total*100:.0f}%  baseModel {with_base/total*100:.0f}%")
+    if seen_base:
+        print(f"\n  baseModel 取值分布（可直接当物种维度用）：")
+        for k, v in sorted(seen_base.items(), key=lambda x: -x[1])[:12]:
+            print(f"    {k:<28} {v}")
+
+    print("\n" + "=" * 60)
+    print("B. 单图详情端点是否存在、是否带 meta")
+    print("=" * 60)
+    d = http_json(f"{API}?limit=1", api_key)
+    iid = (d.get("items") or [{}])[0].get("id") if d else None
+    if iid:
+        one = http_json(f"{API}/{iid}", api_key)
+        if one:
+            keys = sorted(one.keys()) if isinstance(one, dict) else "非对象"
+            print(f"  GET /images/{iid} → 键 {keys}")
+            mm = (one or {}).get("meta") or {}
+            print(f"  meta：{'有，键=' + str(sorted(mm.keys())[:10]) if mm else '空'}")
+        else:
+            print(f"  GET /images/{iid} → 不可用（该端点可能不存在）")
+
+    print("\n" + "=" * 60)
+    print("C. modelVersionIds 能否换出真实模型名")
+    print("=" * 60)
+    ids = []
+    if d:
+        for it in (d.get("items") or []):
+            ids += (it.get("modelVersionIds") or [])
+    if not ids:
+        d2 = http_json(f"{API}?limit=20", api_key)
+        for it in ((d2 or {}).get("items") or []):
+            ids += (it.get("modelVersionIds") or [])
+    if ids:
+        mv = http_json(f"https://civitai.com/api/v1/model-versions/{ids[0]}", api_key)
+        if mv:
+            name = (mv.get("model") or {}).get("name") or mv.get("name")
+            print(f"  model-version {ids[0]} → 模型名：{name}")
+            print(f"  ⇒ 可用：抓取时按 modelVersionIds 批量换名并缓存")
+        else:
+            print(f"  model-version {ids[0]} → 不可用")
+    else:
+        print("  样本里没有 modelVersionIds")
+
+    print("\n" + "=" * 60)
+    print("结论建议")
+    print("=" * 60)
+    if total and with_prompt / total > 0.3:
+        print("  prompt 覆盖率尚可 —— 按原方案走，聚类用「提示词+外观」双通道。")
+    elif with_base and total and with_base / total > 0.6:
+        print("  prompt 大面积缺失，但 baseModel 覆盖良好。")
+        print("  ⇒ 聚类改为纯外观通道（--w-prompt 0），物种维度用 baseModel 做交叉验证。")
+        print("  ⇒ 档案卡把「提示词」换成「基础模型 + 平台互动」，仍然全是真实字段。")
+    else:
+        print("  元数据普遍缺失 —— 考虑换源（DiffusionDB 有完整 prompt）。")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", action="store_true",
                     help="只取 3 条并打印真实字段结构 —— 正式开爬前先跑这个")
+    ap.add_argument("--probe-meta", action="store_true",
+                    help="追查生成参数：meta 覆盖率、单图端点、模型名换取")
     ap.add_argument("--target", type=int, default=700, help="目标条数")
     ap.add_argument("--api-key", default=os.environ.get("CIVITAI_API_KEY"))
     ap.add_argument("--width", type=int, default=512, help="下载宽度（越小越快）")
@@ -236,6 +346,9 @@ def main():
 
     if args.probe:
         probe(args.api_key)
+        return
+    if args.probe_meta:
+        probe_meta(args.api_key)
         return
 
     os.makedirs(RAW, exist_ok=True)
