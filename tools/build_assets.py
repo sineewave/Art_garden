@@ -131,6 +131,31 @@ def hsv_hist(im):
     return h / max(h.sum(), 1.0)
 
 
+EXTRA_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
+
+
+def load_extra(d):
+    """自备图片：放进 assets/incoming/ 就会被一起打包。
+    没有 prompt / 点赞数，聚类只能靠外观通道 —— 这本身是诚实的。"""
+    if not d or not os.path.isdir(d):
+        return []
+    out = []
+    for name in sorted(os.listdir(d)):
+        ext = os.path.splitext(name)[1].lower()
+        if ext not in EXTRA_EXT:
+            continue
+        out.append({
+            "id": "local-" + os.path.splitext(name)[0][:40],
+            "file": os.path.join(d, name),
+            "type": "image",
+            "stratum": "自备",
+            "likes": 0, "comments": 0,
+            "prompt": "", "model": "自备图片 LOCAL",
+            "url": "",
+        })
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tile", type=int, default=128)
@@ -140,6 +165,8 @@ def main():
     ap.add_argument("--k", type=int, default=8, help="物种数（对应花园里的八个物种位）")
     ap.add_argument("--w-prompt", type=float, default=0.62,
                     help="提示词通道权重（其余给外观）")
+    ap.add_argument("--extra-dir", default="assets/incoming",
+                    help="自备图片目录：里面的图会和爬到的素材一起打进图集与聚类")
     args = ap.parse_args()
 
     tile, A = args.tile, args.atlas
@@ -147,8 +174,13 @@ def main():
     per = cols * cols
 
     recs = load_meta()[: args.max]
+    extra = load_extra(args.extra_dir)
+    if extra:
+        print(f"自备图片 {len(extra)} 张（{args.extra_dir}）")
+        recs = recs + extra
     if not recs:
-        sys.exit("data/meta.jsonl 为空 —— 先跑 fetch_civitai.py")
+        sys.exit("data/meta.jsonl 为空，assets/incoming 也没有图片 —— "
+                 "先跑 fetch_civitai.py，或把自己的图片放进 assets/incoming/")
     print(f"素材 {len(recs)} 条\n")
     os.makedirs(ATLAS_DIR, exist_ok=True)
     os.makedirs(SHEET_DIR, exist_ok=True)
