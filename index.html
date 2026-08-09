@@ -94,13 +94,27 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
 #btnSet{font-size:12px;line-height:1;padding:5px 9px;border:1px solid transparent;border-radius:999px;
   background:none;color:var(--ink);opacity:.4;cursor:pointer}
 #btnSet:hover,#btnSet.on{opacity:.85;border-color:var(--line-soft);background:rgba(255,255,255,.8)}
-#setPop{position:absolute;right:0;bottom:34px;min-width:176px;background:var(--panel);
+#setPop{position:absolute;right:0;bottom:34px;width:262px;max-height:min(74vh,560px);overflow-y:auto;
+  background:var(--panel);
   border:1px solid var(--line-soft);border-radius:12px;box-shadow:0 12px 30px rgba(46,45,40,.16);
   padding:5px;display:none;z-index:70}
 #setPop.on{display:block}
 .popItem{display:block;width:100%;text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:10px;
   letter-spacing:1px;padding:8px 11px;border:0;border-radius:8px;background:none;color:var(--ink);cursor:pointer}
 .popItem:hover{background:rgba(46,45,40,.06)}
+.popSep{margin:5px 11px 3px;font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:1.6px;
+  opacity:.38;border-top:1px solid var(--line-soft);padding-top:7px}
+.tRow{padding:4px 11px 5px}
+.tRow label{display:flex;justify-content:space-between;gap:8px;
+  font-family:ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.6px;opacity:.68;margin-bottom:2px}
+.tRow label b{font-weight:400;opacity:.95;font-variant-numeric:tabular-nums}
+.tRow input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;background:none;cursor:pointer}
+.tRow input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:2px;background:rgba(46,45,40,.16)}
+.tRow input[type=range]::-moz-range-track{height:3px;border-radius:2px;background:rgba(46,45,40,.16)}
+.tRow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;
+  background:var(--ink);margin-top:-4px;border:0}
+.tRow input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--ink);border:0}
+.tRow.off label{opacity:.4}
 
 /* ---------- intro / toast ---------- */
 #intro{position:fixed;inset:0;background:rgba(242,243,241,.97);display:flex;align-items:center;justify-content:center;z-index:120;padding:20px}
@@ -188,6 +202,9 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
     <div id="setPop">
       <button class="popItem" id="popReseed">↻ 重播花园 RESEED</button>
       <button class="popItem" id="popLang">Switch to English</button>
+      <div class="popSep" id="popTuneT">生态参数 ECOLOGY</div>
+      <div id="tuneRows"></div>
+      <button class="popItem" id="popReset">↺ 恢复默认 RESET</button>
     </div>
   </div>
 </footer>
@@ -228,14 +245,43 @@ const CONFIG = {
   images: (typeof window!=='undefined' && window.ATTENTION_GARDEN_IMAGES) || [],
   spawnMs: 340,          // 信息流生成间隔
   maxLive: 250,          // 信息流同屏最大对象
-  maxPlants: 26,         // 花园最大植株
-  minPlants: 5,          // 低于此数才随机自生一株（避免画面全空）
-  targetPlants: 7,       // 保留字段：其它逻辑参考的种群基准
-  speciesCap: 4,         // 单一物种上限 —— 潮流可以成簇，但别把一园变成一种
-  idleSec: 60,           // 多久无输入 → 算法注视接管（展厅可调低）
-  autoGain: 0.12         // 算法注视的浇灌力度（相对观众的比例，近乎不作为）
+  minPlants: 5           // 低于此数才随机自生一株（避免画面全空）
 };
 const Q = new URLSearchParams(location.search);
+
+/* ============================================================
+   生态参数 TUNE — 藏在设置里，可现场调
+   ------------------------------------------------------------
+   这些数值就是这件作品的"生态法则"：注视值多少、平台白送多少曝光、
+   没人看时衰减多快。调它们等于调这个生态有多严苛。
+   ============================================================ */
+const TUNE_DEF={
+  gazeGain: 36,     // 观众注视的浇灌力度（每秒注意力）
+  autoGain: 0.12,   // 算法注视相对观众的比例（0 = 算法完全不作为）
+  ambient:  0.24,   // 推荐流底噪：任何内容都会分到的曝光（0 = 无人问津即枯）
+  decay:    0.34,   // 注意力自然衰减（越大越残酷）
+  growth:   1.00,   // 生长速度倍率
+  maxPlants:26,     // 花园最大植株
+  speciesCap:4,     // 单一物种上限 —— 潮流可以成簇，但别把一园变成一种
+  idleSec:  60,     // 多久无输入 → 算法注视接管
+  dormDie:  240     // 休眠多久后化为数字残骸（真正决定「会不会消亡」的那一档）
+};
+const TUNE_META=[
+  ['gazeGain',  ['观众注视','VISITOR GAZE'], 6,   80,  1,    v=>v.toFixed(0)],
+  ['autoGain',  ['算法注视','ALGO GAZE'],    0,   1,   .01,  v=>'×'+v.toFixed(2)],
+  ['ambient',   ['推荐底噪','AMBIENT REACH'],0,   .8,  .01,  v=>v.toFixed(2)],
+  ['decay',     ['注意力衰减','DECAY'],      0,   1.2, .01,  v=>v.toFixed(2)],
+  ['growth',    ['生长速度','GROWTH'],       .3,  3,   .05,  v=>'×'+v.toFixed(2)],
+  ['maxPlants', ['最大植株','MAX PLANTS'],   6,   40,  1,    v=>v.toFixed(0)],
+  ['speciesCap',['单种上限','SPECIES CAP'],  1,   8,   1,    v=>v.toFixed(0)],
+  ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s'],
+  ['dormDie',   ['休眠→残骸','DORMANT→DEBRIS'],30,600,10,   v=>v.toFixed(0)+'s']
+];
+const TUNE=Object.assign({},TUNE_DEF);
+try{ const saved=JSON.parse(localStorage.getItem('ag_tune')||'{}');
+  Object.keys(TUNE_DEF).forEach(k=>{ if(typeof saved[k]==='number')TUNE[k]=saved[k]; });
+}catch(_){}
+function saveTune(){ try{ localStorage.setItem('ag_tune',JSON.stringify(TUNE)); }catch(_){} }
 
 /* ---------------- utilities ---------------- */
 const R=(a,b)=>a+Math.random()*(b-a);
@@ -277,8 +323,18 @@ const PALS=[
   ['#8F7BB5','#C0B0DC','#EDE8F6'],   // 藕紫 / 丁香
   ['#D97E9C','#F2B7C6','#FAE8ED'],   // 玫粉 / 樱粉
   ['#D9A23F','#EFCB84','#F8EED6'],   // 赭黄 / 麦浪
-  ['#6E6E64','#B0AFA3','#E9E9E2']    // 墨 / 石
+  ['#6E6E64','#B0AFA3','#E9E9E2'],   // 墨 / 石
+  ['#4E5DA8','#9AA4DA','#E7E9F7'],   // 深靛 / 雾靛
+  ['#C9C133','#E6E08C','#F7F5D8'],   // 柠黄 / 稻
+  ['#3E7D5A','#8FBFA2','#E1F0E6'],   // 松青 / 薄绿
+  ['#E08A3C','#F3C089','#FCEBD8'],   // 陶橙 / 杏
+  ['#A44E7E','#D69CBB','#F6E5EE'],   // 莓紫 / 藕
+  ['#3FA3C4','#94CFE2','#E2F2F7']    // 天青 / 湖水
 ];
+/* 图集分桶数 = 聚类数（8），与调色板数解耦 —— 调色板可以随物种自由增加，
+   而"同种花取到相关联的图片"这件事仍然由聚类决定。 */
+const NBUCKET=8;
+const palBucket=i=>((i%NBUCKET)+NBUCKET)%NBUCKET;
 /* 任意 css 颜色（hex 或 rgb()）→ [r,g,b]；供压暗/提亮混色使用 */
 function anyRgb(c){ if(c[0]==='#')return hex2rgb(c);
   const m=String(c).match(/(\d+)\D+(\d+)\D+(\d+)/); return m?[+m[1],+m[2],+m[3]]:[128,128,128]; }
@@ -301,6 +357,8 @@ const UI_TXT={
   slDeb:['数字残骸','DEBRIS'], slTrend:['潮流','TRENDS'], slEng:['能耗','ENERGY'],
   meterLabel:['注意力 ATTENTION','ATTENTION'],
   popReseed:['↻ 重播花园 RESEED','↻ RESEED GARDEN'],
+  popReset:['↺ 恢复默认 RESET','↺ RESET DEFAULTS'],
+  popTuneT:['生态参数 ECOLOGY','ECOLOGY PARAMETERS'],
   popLang:['Switch to English','切换到中文'],
   enter:['进入生态系统 ENTER','ENTER THE ECOSYSTEM'],
   introP:['生成对象不断涌入信息流。注视是它们唯一的养分：被看见的成长、分枝、落籽、聚成潮流；久无人问津的转入休眠，直至化为数字残骸。花园之下，一套由采集、传输、存储排序、模型推理与能源冷却构成的代谢根系持续运转。',
@@ -379,16 +437,16 @@ const CLUSTER_LABEL={};
 if(ASSETS&&ASSETS.items&&ASSETS.items.length){
   ASSETS.atlases.forEach((src,i)=>{ const im=new Image();
     im.onload=()=>atlasReady++; im.src=src; ATLAS[i]=im; });
-  for(let i=0;i<PALS.length;i++)ASSET_BUCKET.push([]);
+  for(let i=0;i<NBUCKET;i++)ASSET_BUCKET.push([]);
   const K=(ASSETS.keys||[]).indexOf('cluster');
   ASSETS.items.forEach((it,i)=>{
     ASSET_ALL.push(i);
     // 物种 = 聚类（提示词语义 + 外观），而不是模型名 —— 同种花才是真的相关
     const c=(K>=0&&it[K]!=null) ? it[K] : hashStr(it[8]||('m'+i));
-    ASSET_BUCKET[c%PALS.length].push(i);
+    ASSET_BUCKET[palBucket(c)].push(i);
   });
   if(ASSETS.clusters)Object.keys(ASSETS.clusters).forEach(k=>{
-    CLUSTER_LABEL[(+k)%PALS.length]=ASSETS.clusters[k].label||''; });
+    CLUSTER_LABEL[palBucket(+k)]=ASSETS.clusters[k].label||''; });
   console.info(`[Attention Garden] 真实素材 ${ASSETS.items.length} 条 / `
     +`${ASSETS.atlases.length} 张图集`,
     '多样性',ASSETS.diversityAll,'近重复',ASSETS.nearDupRate,ASSETS.clusters||'');
@@ -403,11 +461,11 @@ function assetArt(i,palIdx){
   const it=ASSETS.items[i], T=ASSETS.tile, model=it[8]||'', prompt=it[9]||'';
   const K=(ASSETS.keys||[]).indexOf('cluster');
   const cl=(K>=0&&it[K]!=null)?it[K]:null;
-  return { real:true, idx:i, cluster:cl, clusterLabel:(cl!=null?(CLUSTER_LABEL[cl%PALS.length]||''):''),
+  return { real:true, idx:i, cluster:cl, clusterLabel:(cl!=null?(CLUSTER_LABEL[palBucket(cl)]||''):''),
     atlasI:it[0], sx:it[1]*T, sy:it[2]*T, tile:T,
     isVideo:!!it[3], stratum:it[4], likes:it[5], comments:it[6], frames:it[7],
     model, prompt, srcUrl:it[10], id:it[11],
-    style:'photo', palIdx:(palIdx!==undefined?palIdx:hashStr(model||('m'+i))%PALS.length),
+    style:'photo', palIdx:(palIdx!==undefined?palIdx:hashStr(model||('m'+i))%NBUCKET),
     title:titleFromPrompt(prompt,model), sheet:null, sheetTried:false, f:0 };
 }
 /* 视频精灵图：并发上限 3，避免一次点开一片就卡 */
@@ -568,8 +626,9 @@ function artTitle(){ return pick(NAME_A)+pick(NAME_B); }
    有真实素材时改从图集取，物种由生成模型决定（结构承载真实变量）。 */
 function makeArt(styleId, palIdx){
   if(ASSET_ALL.length){
-    const bucket=(palIdx!==undefined&&ASSET_BUCKET[palIdx]&&ASSET_BUCKET[palIdx].length)
-      ? ASSET_BUCKET[palIdx] : ASSET_ALL;
+    const bi2=palIdx!==undefined?palBucket(palIdx):undefined;
+    const bucket=(bi2!==undefined&&ASSET_BUCKET[bi2]&&ASSET_BUCKET[bi2].length)
+      ? ASSET_BUCKET[bi2] : ASSET_ALL;
     return assetArt(bucket[Math.floor(Math.random()*bucket.length)], palIdx);
   }
   const c=document.createElement('canvas'); c.width=c.height=ASZ;
@@ -624,7 +683,7 @@ function syncGazeTag(){
 }
 function updateGaze(dt){
   GAZE.idle+=dt;
-  if(GAZE.mode==='visitor'&&(GAZE.idle>CONFIG.idleSec||!GAZE.present)){
+  if(GAZE.mode==='visitor'&&(GAZE.idle>TUNE.idleSec||!GAZE.present)){
     GAZE.mode='auto'; GAZE.retgt=0; syncGazeTag(); }
   if(GAZE.mode==='auto'){
     GAZE.retgt-=dt;
@@ -945,16 +1004,24 @@ for(let i=0;i<26;i++){ const it=spawnItem();
 
 /* ---- 物种图鉴：形态 / 色系 / 画作风格 三位一体 ---- */
 const SPECIES=[
-  {zh:'十字菀', en:'CROSSVANE', pal:0, style:'stitch',  form:'blade',  hMul:1.00, gMul:1.00, petals:8, mk:1.00},
-  {zh:'铃钟兰', en:'BELLNET',   pal:1, style:'bars',    form:'bell',   hMul:0.92, gMul:0.94, petals:3, mk:0.60},
-  {zh:'穗序草', en:'SPIKELET',  pal:2, style:'mosaic',  form:'spike',  hMul:1.16, gMul:1.10, petals:6, mk:0.56},
-  {zh:'伞形藻', en:'UMBRELLE',  pal:3, style:'blob',    form:'umbel',  hMul:0.96, gMul:1.00, petals:5, mk:0.62},
-  {zh:'涡卷莲', en:'SPIRALIS',  pal:4, style:'spiral',  form:'ring',   hMul:0.86, gMul:0.90, petals:6, mk:0.92},
-  {zh:'蝶尾菊', en:'PAPILIO',   pal:5, style:'botanic', form:'wing',   hMul:1.04, gMul:1.00, petals:2, mk:0.80},
-  {zh:'流苏柳', en:'FRINGEA',   pal:6, style:'photo',   form:'fringe', hMul:1.12, gMul:0.96, petals:7, mk:0.72},
-  {zh:'墨点兰', en:'INKSPOT',   pal:7, style:'pebble',  form:'dot',    hMul:0.90, gMul:1.04, petals:9, mk:0.94}
+  {zh:'十字菀', en:'CROSSVANE', pal:0,  style:'stitch',  form:'blade',  hMul:1.00, gMul:1.00, petals:8,  mk:1.00},
+  {zh:'铃钟兰', en:'BELLNET',   pal:1,  style:'bars',    form:'bell',   hMul:0.92, gMul:0.94, petals:3,  mk:0.60},
+  {zh:'穗序草', en:'SPIKELET',  pal:2,  style:'mosaic',  form:'spike',  hMul:1.16, gMul:1.10, petals:6,  mk:0.56},
+  {zh:'伞形藻', en:'UMBRELLE',  pal:3,  style:'blob',    form:'umbel',  hMul:0.96, gMul:1.00, petals:5,  mk:0.62},
+  {zh:'涡卷莲', en:'SPIRALIS',  pal:4,  style:'spiral',  form:'ring',   hMul:0.86, gMul:0.90, petals:6,  mk:0.92},
+  {zh:'蝶尾菊', en:'PAPILIO',   pal:5,  style:'botanic', form:'wing',   hMul:1.04, gMul:1.00, petals:2,  mk:0.80},
+  {zh:'流苏柳', en:'FRINGEA',   pal:6,  style:'photo',   form:'fringe', hMul:1.12, gMul:0.96, petals:7,  mk:0.72},
+  {zh:'墨点兰', en:'INKSPOT',   pal:7,  style:'pebble',  form:'dot',    hMul:0.90, gMul:1.04, petals:9,  mk:0.94},
+  // —— 参考扁平矢量／积木花园插画新增的六种 ——
+  {zh:'叠塔花', en:'STACKPILE', pal:8,  style:'mosaic',  form:'stack',  hMul:0.94, gMul:0.92, petals:4,  mk:0.66},
+  {zh:'辐星菊', en:'RADIANT',   pal:9,  style:'stitch',  form:'star',   hMul:1.06, gMul:1.02, petals:10, mk:0.86},
+  {zh:'重瓣芍', en:'LAYERCUP',  pal:10, style:'botanic', form:'layer',  hMul:0.98, gMul:0.88, petals:7,  mk:0.78},
+  {zh:'管风铃', en:'TUBEBELL',  pal:11, style:'bars',    form:'tube',   hMul:1.10, gMul:1.00, petals:5,  mk:0.54},
+  {zh:'心叶藤', en:'HEARTVINE', pal:12, style:'blob',    form:'heart',  hMul:1.02, gMul:1.06, petals:6,  mk:0.70},
+  {zh:'方格花', en:'CHECKER',   pal:13, style:'mosaic',  form:'grid',   hMul:0.88, gMul:0.98, petals:5,  mk:0.90}
 ];
-SPECIES.forEach((sp,i)=>{ sp.idx=i; sp.c0=PALS[sp.pal][0]; sp.c1=PALS[sp.pal][1]; sp.c2=PALS[sp.pal][2]; });
+SPECIES.forEach((sp,i)=>{ sp.idx=i; sp.c0=PALS[sp.pal][0]; sp.c1=PALS[sp.pal][1]; sp.c2=PALS[sp.pal][2];
+  sp.bucket=palBucket(sp.pal); });
 
 /* ---- 生命阶段：慢周期，花开之后长期驻留 ---- */
 const STG=[
@@ -1077,17 +1144,21 @@ function buildBranches(p){
 /* ---- 播种 ---- */
 function speciesPop(si){ let n=0; G.plants.forEach(p=>{ if(p.si===si)n++; }); return n; }
 function plantAt(o={}){
-  if(G.plants.length>=CONFIG.maxPlants) return null;
+  if(G.plants.length>=TUNE.maxPlants) return null;
   let si=o.si;
-  if(si===undefined&&o.art) si=SPECIES.findIndex(s=>s.pal===o.art.palIdx);
+  // 迁入的图片按它所属的聚类落到对应家族；同一个桶里有几个物种就随机选一个
+  if(si===undefined&&o.art&&o.art.palIdx!==undefined){
+    const fam=[]; SPECIES.forEach((s,i)=>{ if(s.bucket===palBucket(o.art.palIdx))fam.push(i); });
+    if(fam.length)si=pick(fam);
+  }
   if(si===undefined||si<0){
     // 生态漂移：偏向已成势的物种，也留出新种入侵的机会
     const pool=[];
     SPECIES.forEach((sp,i)=>{ const w=(G.trends[i]&&G.trends[i].on)?2:1;
-      if(speciesPop(i)<CONFIG.speciesCap) for(let k=0;k<w;k++)pool.push(i); });
+      if(speciesPop(i)<TUNE.speciesCap) for(let k=0;k<w;k++)pool.push(i); });
     si=pool.length?pick(pool):RI(0,SPECIES.length-1);
   }
-  if(speciesPop(si)>=CONFIG.speciesCap&&o.stage===undefined) return null;
+  if(speciesPop(si)>=TUNE.speciesCap&&o.stage===undefined) return null;
   const sp=SPECIES[si];
   let row=o.row;
   if(row===undefined){ const c=[0,0,0,0]; G.plants.forEach(q=>c[q.row]++);
@@ -1196,7 +1267,7 @@ function reseedGarden(){
   const order=SPECIES.map((_,i)=>i);
   for(let i=order.length-1;i>0;i--){ const j=RI(0,i); [order[i],order[j]]=[order[j],order[i]]; }
   const plan=[[order[0],6],[order[0],5],[order[0],5]];
-  for(let k=0,n=RI(5,7);k<n;k++) plan.push([order[1+k%(order.length-1)], RI(1,5)]);
+  for(let k=0,n=RI(6,9);k<n;k++) plan.push([order[1+k%(order.length-1)], RI(1,5)]);
   plan.forEach(([si,stage])=>{
     const p=plantAt({si,stage});
     if(p){ p.g=R(.1,.75); p.att=R(6,16);
@@ -1230,7 +1301,7 @@ function updateGarden(dt){
   // 自动补种：维持种群规模，优先落地信息流迁入的对象
   G.sowAcc+=dt;
   if(G.sowAcc>9){ G.sowAcc=0;
-    if(S.queue.length && G.plants.length<CONFIG.maxPlants){
+    if(S.queue.length && G.plants.length<TUNE.maxPlants){
       // 你在信息流里看中的对象 —— 优先落地，这才是花园里长什么的决定因素
       const sd=S.queue.shift();
       const p=plantAt({art:sd.art,type:sd.type,model:sd.model});
@@ -1261,7 +1332,7 @@ function updateGarden(dt){
     const near=active&&Math.abs(GAZE.x-x)<52*p.rs+10&&gwy>topWy&&gwy<rowWy+16;
     if(near&&avail){
       // 观众的注视是主力；算法只留极弱的托底，避免无人时全园枯死
-      const gain=(GAZE.mode==='visitor')?36:36*CONFIG.autoGain;
+      const gain=(GAZE.mode==='visitor')?TUNE.gazeGain:TUNE.gazeGain*TUNE.autoGain;
       const g=gain*dt; p.att=Math.min(60,p.att+g);
       if(GAZE.mode==='visitor')drain+=g*.28;
       S.energy+=g*.005;
@@ -1277,13 +1348,13 @@ function updateGarden(dt){
 
     // 平台的基础曝光：任何内容都会分到一点推荐流量，够它慢慢活着
     // （这不是算法的注视，只是推荐流的底噪；展厅空场时整园不至于一起枯掉）
-    p.att=Math.min(60, p.att+dt*0.24);
+    p.att=Math.min(60, p.att+dt*TUNE.ambient);
     let comp=0; G.plants.forEach(q=>{ if(q!==p&&q.row===p.row&&Math.abs(q.fx-p.fx)*w<64)comp++; });
-    p.att=Math.max(0, p.att-dt*(0.34+comp*0.15));
+    p.att=Math.max(0, p.att-dt*(TUNE.decay+comp*0.15));
 
     // 生长
     if(p.state==='alive'&&p.stage<7&&p.wilt<.5){
-      const vigor=clamp(0.28+p.att*0.042,0.28,1.6)*sp.gMul;
+      const vigor=clamp(0.28+p.att*0.042,0.28,1.6)*sp.gMul*TUNE.growth;
       p.g+=dt/STG[p.stage].dur*vigor;
       S.energy+=p.type.tick*dt*2;
       let ready=p.g>=1;
@@ -1331,7 +1402,7 @@ function updateGarden(dt){
     if(p.state==='alive'&&p.wilt>=1){ p.state='dormant'; p.dormT=0;
       toast(tt(p.id+' 进入休眠 DORMANT · 注视可将其唤醒',p.id+' went DORMANT · gaze to wake it')); }
     if(p.state==='dormant'){ p.dormT+=dt;
-      if(p.dormT>240){ p.state='dying'; p.dieT=0; } }
+      if(p.dormT>TUNE.dormDie){ p.state='dying'; p.dieT=0; } }
     p.grayV=lerp(p.grayV, p.state==='dormant'?1:0, dt*1.8);
 
     // 形态趋近
@@ -1608,23 +1679,123 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
       flat(ctx,()=>{ ctx.beginPath(); ctx.ellipse(0,R2*.52,R2*.22,R2*.34,0,0,7); },
            shade(c0,.42), shade(c0,.6), 0,sOff*.7);
       break; }
-    case 'fringe': { // 流苏：垂坠丝线 + 像素珠
-      for(let k=0;k<nP;k++){
-        const fx2=(-(nP-1)/2+k)*R2*.30;
-        const ln=R2*(.72+Math.sin(G.t*1.2+k*.7+p.seed)*.14);
-        ctx.strokeStyle=k%2?c0:c1; ctx.lineWidth=Math.max(1.4,R2*.075); ctx.lineCap='round';
-        ctx.beginPath(); ctx.moveTo(fx2,R2*.30);
-        ctx.quadraticCurveTo(fx2+Math.sin(G.t+k)*R2*.10,R2*.30+ln*.6,fx2,R2*.30+ln); ctx.stroke();
-        const cs=Math.max(2,R2*.17);
-        ctx.fillStyle=shade(k%2?c0:c1,.2);
-        ctx.fillRect(fx2-cs/2,R2*.30+ln-cs*.2,cs,cs);
-        ctx.fillStyle=tint(k%2?c0:c1,.36);
-        ctx.fillRect(fx2-cs/2,R2*.30+ln-cs*.2,cs*.45,cs*.45);
+    case 'fringe': { // 流苏：一道横冠 + 细垂丝，末端缀像素珠
+      const n=Math.max(5,nP+2), span=R2*1.02;
+      for(let k=0;k<n;k++){
+        const fx2=(-(n-1)/2+k)*(span*2/(n-1||1));
+        const ln=R2*(.62+((k*37)%11)/11*.55+Math.sin(G.t*1.1+k*.8+p.seed)*.08);
+        const col=k%2?c0:c1;
+        ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,R2*.045); ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(fx2,R2*.26);
+        ctx.quadraticCurveTo(fx2+Math.sin(G.t*.9+k)*R2*.07,R2*.26+ln*.6,fx2,R2*.26+ln); ctx.stroke();
+        const cs=Math.max(1.8,R2*.11);
+        ctx.fillStyle=shade(col,.14); ctx.fillRect(fx2-cs/2,R2*.26+ln-cs*.3,cs,cs);
+        ctx.fillStyle=tint(col,.4);   ctx.fillRect(fx2-cs/2,R2*.26+ln-cs*.3,cs*.44,cs*.44);
       }
+      // 横冠：一块扁色块 + 上方两枚小瓣
+      flat(ctx,()=>{ roundRect(ctx,-span,R2*.02,span*2,R2*.30,R2*.15); },c0,sh0,0,sOff*.7);
+      ctx.fillStyle=tint(c0,.34); ctx.fillRect(-span*.86,R2*.08,span*.7,R2*.07);
       [-1,1].forEach(d=>{ flat(ctx,()=>{ ctx.beginPath();
-          ctx.ellipse(d*R2*.92,-R2*.16,R2*.42,R2*.22,d*.5,0,7); },
-        c1,sh1,d*1.1,sOff*.8); });
-      pixDust(ctx,p.seed,R2*.8,tint(c1,.4),c2,4);
+        ctx.ellipse(d*span*.52,-R2*.24,R2*.34,R2*.24,d*.42,0,7); }, c1,sh1,0,sOff*.6); });
+      pixDust(ctx,p.seed,R2*.6,tint(c1,.42),c2,4);
+      break; }
+    case 'stack': { // 叠塔花：积木砖块塔，上面一层压住下面一层的凸钉
+      const bh=R2*.46, n=3;
+      for(let k=0;k<n;k++){
+        const by=R2*.62-k*bh*1.06, w2=R2*1.02*(1-k*.13);
+        const col=k%2?c1:c0, sc=k%2?sh1:sh0;
+        flat(ctx,()=>{ roundRect(ctx,-w2,by-bh*.6,w2*2,bh*1.2,bh*.24); },col,sc,0,sOff*.8);
+        ctx.fillStyle=tint(col,.32);            // 侧面高光
+        ctx.fillRect(-w2+bh*.22,by-bh*.34,w2*.5,bh*.2);
+        const studs=2+((k+1)%2);                // 顶面凸钉
+        for(let t2=0;t2<studs;t2++){
+          const sx2=(-(studs-1)/2+t2)*(w2*1.4/studs);
+          ctx.fillStyle=shade(col,.18);
+          ctx.beginPath(); ctx.ellipse(sx2,by-bh*.58,w2*.16,bh*.17,0,0,7); ctx.fill();
+          ctx.fillStyle=tint(col,.16);
+          ctx.beginPath(); ctx.ellipse(sx2,by-bh*.66,w2*.16,bh*.17,0,0,7); ctx.fill();
+        }
+      }
+      break; }
+    case 'star': { // 辐星菊：尖瓣双层辐射 + 像素花芯
+      const n=Math.max(6,nP);
+      for(let layer=1;layer>=0;layer--){
+        for(let k=0;k<n;k++){
+          const a=k/n*Math.PI*2+(layer?Math.PI/n:0)+Math.sin(G.t*.22+p.seed)*.02;
+          const len=R2*(layer?1.34:1.02), wid=R2*(layer?.16:.26);
+          ctx.save(); ctx.rotate(a);
+          flat(ctx,()=>{ ctx.beginPath();
+            ctx.moveTo(0,-len); ctx.lineTo(wid,-len*.40);
+            ctx.lineTo(0,R2*.12); ctx.lineTo(-wid,-len*.40); ctx.closePath(); },
+            layer?c1:c0, layer?sh1:sh0, 0,sOff*.7);
+          ctx.restore();
+        }
+      }
+      { const cs=Math.max(2,R2*.15); ctx.fillStyle=c2;
+        for(let gy2=-1;gy2<=1;gy2++)for(let gx=-1;gx<=1;gx++){
+          if(Math.abs(gx)+Math.abs(gy2)>1)continue;
+          ctx.fillRect(gx*cs-cs/2,gy2*cs-cs/2,cs-.6,cs-.6); } }
+      break; }
+    case 'layer': { // 重瓣芍：三层同心圆瓣，外圈最大最先画，内圈层层压上
+      for(let r=2;r>=0;r--){
+        const n=Math.max(5,nP-(2-r)), rr=R2*(.62+r*.34), pw=R2*(.17+r*.075);
+        const col=r===2?c1:(r===1?c0:tint(c0,.30));
+        for(let k=0;k<n;k++){
+          const a=k/n*Math.PI*2+r*.42;
+          ctx.save(); ctx.rotate(a);
+          flat(ctx,()=>{ ctx.beginPath(); ctx.ellipse(0,-rr*.60,pw,rr*.52,0,0,7); },
+               col, shade(col,.26), 0, sOff*.6);
+          ctx.restore();
+        }
+      }
+      break; }
+    case 'tube': { // 管风铃：一排垂管，管口外翻
+      const n=clamp(nP,3,6);
+      for(let k=0;k<n;k++){
+        const tx2=(-(n-1)/2+k)*R2*.46, tl=R2*(.70+((k%2)?.20:0)), tw=R2*.17;
+        const swy=Math.sin(G.t*1.1+k*.7+p.seed)*R2*.035;
+        const col=k%2?c0:c1, sc=k%2?sh0:sh1;
+        flat(ctx,()=>{ roundRect(ctx,tx2-tw+swy,R2*.14,tw*2,tl,tw*.85); },col,sc,0,sOff*.7);
+        flat(ctx,()=>{ ctx.beginPath();
+          ctx.ellipse(tx2+swy,R2*.14+tl,tw*1.52,tw*.78,0,0,7); },tint(col,.24),sc,0,1.2);
+        ctx.fillStyle=tint(col,.44);
+        ctx.fillRect(tx2-tw*.62+swy,R2*.28,tw*.46,tl*.5);
+      }
+      ctx.strokeStyle=dim('#87A863',f); ctx.lineWidth=1.4; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-R2*.46*(n-1)/2,R2*.14); ctx.lineTo(R2*.46*(n-1)/2,R2*.14); ctx.stroke();
+      break; }
+    case 'heart': { // 心叶藤：环成一圈的心形叶，叶间缀小点
+      const n=clamp(nP,4,7);
+      const heart=(hs)=>{ ctx.beginPath();
+        ctx.moveTo(0,hs*.95);
+        ctx.bezierCurveTo(-hs*1.24,hs*.10, -hs*.56,-hs*.86, 0,-hs*.22);
+        ctx.bezierCurveTo( hs*.56,-hs*.86,  hs*1.24,hs*.10, 0,hs*.95);
+        ctx.closePath(); };
+      for(let k=0;k<n;k++){
+        const a=k/n*Math.PI*2+p.seed*.3+Math.sin(G.t*.4+p.seed)*.03;
+        const rr=R2*1.02, hs=R2*.40;
+        ctx.save(); ctx.translate(Math.cos(a)*rr,Math.sin(a)*rr*.92); ctx.rotate(a+Math.PI/2);
+        flat(ctx,()=>heart(hs), k%2?c0:c1, k%2?sh0:sh1, 0,sOff*.7);
+        ctx.fillStyle=tint(k%2?c0:c1,.36);
+        ctx.fillRect(-hs*.5,-hs*.30,hs*.34,hs*.34);
+        ctx.restore();
+        const a2=(k+.5)/n*Math.PI*2+p.seed*.3, cs=Math.max(2,R2*.12);
+        ctx.fillStyle=c2;
+        ctx.fillRect(Math.cos(a2)*R2*1.36-cs/2, Math.sin(a2)*R2*1.26-cs/2, cs,cs);
+      }
+      break; }
+    case 'grid': { // 方格花：棋盘像素花环，中心留给画作
+      const N=7, cs=R2*.42;
+      for(let gy2=0;gy2<N;gy2++)for(let gx=0;gx<N;gx++){
+        const dx=gx-(N-1)/2, dy=gy2-(N-1)/2, d=Math.hypot(dx,dy);
+        if(d<1.9||d>3.0)continue;
+        const col=((gx+gy2)%2)?c0:c1;
+        const px2=dx*cs, py2=dy*cs;
+        flat(ctx,()=>{ ctx.beginPath(); ctx.rect(px2-cs*.46,py2-cs*.46,cs*.92,cs*.92); },
+             col, shade(col,.26), 0, sOff*.5);
+        if((gx+gy2)%3===0){ ctx.fillStyle=tint(col,.42);
+          ctx.fillRect(px2-cs*.22,py2-cs*.22,cs*.3,cs*.3); }
+      }
       break; }
     default: { // dot 墨点：疏密不一的像素色块群
       const rnd=sRand(Math.floor(p.seed*7717)+3);
@@ -1645,7 +1816,7 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
   }
   ctx.restore();
   if(mount>6){
-    const off=(sp.form==='bell'||sp.form==='fringe')? -R2*.52
+    const off=(sp.form==='bell'||sp.form==='fringe'||sp.form==='tube')? -R2*.52
             : (sp.form==='spike')? R2*.30 : 0;
     ctx.save(); ctx.translate(0,off);
     drawMount(ctx,p,mount,Math.max(p.grayV,p.wilt*.6),art);
@@ -2171,8 +2342,29 @@ btnSet.onclick=e=>{ e.stopPropagation();
 document.addEventListener('pointerdown',e=>{ if(!$('setWrap').contains(e.target))closeSet(); });
 $('popReseed').onclick=()=>{ reseedGarden(); closeSet();
   toast(tt('花园已重播 —— 新的一园','the garden has been reseeded')); };
-$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); closeSet();
+$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); closeSet();
   toast(tt('语言：中文','Language: English')); };
+
+/* 生态参数滑杆：改的就是这件作品的生态法则，即时生效并记住 */
+function buildTuneRows(){
+  const box=$('tuneRows'); box.innerHTML='';
+  TUNE_META.forEach(([key,label,min,max,step,fmt])=>{
+    const row=document.createElement('div'); row.className='tRow';
+    const lb=document.createElement('label');
+    const nm=document.createElement('span'); nm.textContent=tt(label[0],label[1]);
+    const val=document.createElement('b'); val.textContent=fmt(TUNE[key]);
+    lb.appendChild(nm); lb.appendChild(val);
+    const sl=document.createElement('input');
+    sl.type='range'; sl.min=min; sl.max=max; sl.step=step; sl.value=TUNE[key];
+    sl.oninput=()=>{ TUNE[key]=+sl.value; val.textContent=fmt(TUNE[key]);
+      row.classList.toggle('off',+sl.value===0); saveTune(); };
+    row.classList.toggle('off',TUNE[key]===0);
+    row.appendChild(lb); row.appendChild(sl); box.appendChild(row);
+  });
+}
+$('popReset').onclick=()=>{ Object.assign(TUNE,TUNE_DEF); saveTune(); buildTuneRows();
+  toast(tt('生态参数已恢复默认','ecology parameters reset')); };
+buildTuneRows();
 
 /* ============================================================
    悬停档案（注视到什么就展开什么 —— 算法注视时同样生效）
