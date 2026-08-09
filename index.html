@@ -55,8 +55,13 @@ canvas.stage{position:absolute;inset:0;width:100%;height:100%;display:block;curs
 .card h4{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:2px;margin-bottom:8px}
 .krow{display:flex;justify-content:space-between;gap:8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;
   padding:3.5px 0;border-bottom:1px dashed rgba(38,33,26,.2)}
-.krow span:first-child{opacity:.5;white-space:nowrap}
-.krow span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.krow span:first-child{opacity:.5;white-space:nowrap;flex:0 0 auto}
+.krow span:last-child{text-align:right;font-variant-numeric:tabular-nums;
+  min-width:0;flex:1 1 auto;overflow-wrap:anywhere;line-height:1.6}
+/* 长文本（prompt）独占一行，标签在上 */
+.krow.col{flex-direction:column;gap:2px}
+.krow.col span:last-child{text-align:left;opacity:.78;line-height:1.62;
+  font-size:9px;word-break:break-word}
 .swatch{display:inline-block;width:9px;height:9px;border:1px solid var(--line);vertical-align:-1px;margin-right:4px}
 
 .toolbar{position:absolute;left:14px;top:36px;display:flex;gap:8px;z-index:25;flex-wrap:wrap}
@@ -267,12 +272,74 @@ const S={att:100, energy:0, power:38, generated:0, migrated:0, debris:0,
          itemSeq:0, plantSeq:0, queue:[]};
 let activePage='bloom';
 
-/* ---------------- real image pool (optional) ---------------- */
-const IMG_POOL=[];
-CONFIG.images.forEach(src=>{
-  const im=new Image(); im.crossOrigin='anonymous';
-  im.onload=()=>IMG_POOL.push(im); im.src=src;
-});
+/* ============================================================
+   真实素材：图集（texture atlas）
+   ------------------------------------------------------------
+   1000 张图不是 1000 个请求，而是 4 张 2048² 的图集，每张装 256 块。
+   取图 = drawImage(atlas, sx,sy,128,128, ...)，零解码开销。
+   视频不走视频解码器，走 4×4 精灵图，被注视时才加载并逐帧推进。
+   资源由 tools/build_assets.py 生成；没有资源时自动回退内置纹样。
+   ============================================================ */
+const ASSETS=(typeof window!=='undefined'&&window.ATTENTION_GARDEN_ASSETS)||null;
+const ATLAS=[]; let atlasReady=0;
+const ASSET_BUCKET=[]; let ASSET_ALL=[];
+function hashStr(s){ let h=2166136261;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
+  return h>>>0; }
+if(ASSETS&&ASSETS.items&&ASSETS.items.length){
+  ASSETS.atlases.forEach((src,i)=>{ const im=new Image();
+    im.onload=()=>atlasReady++; im.src=src; ATLAS[i]=im; });
+  for(let i=0;i<PALS.length;i++)ASSET_BUCKET.push([]);
+  ASSETS.items.forEach((it,i)=>{
+    ASSET_ALL.push(i);
+    ASSET_BUCKET[hashStr(it[8]||('m'+i))%PALS.length].push(i);   // 物种 = 生成模型
+  });
+  console.info(`[Attention Garden] 载入真实素材 ${ASSETS.items.length} 条 / `
+    +`${ASSETS.atlases.length} 张图集`, ASSETS.diversity||'');
+}
+function titleFromPrompt(p,model){
+  if(!p)return model||'未命名对象';
+  let t=String(p).split(/[,，.。|;；\n]/)[0].trim().replace(/\s+/g,' ');
+  if(t.length>20)t=t.slice(0,20)+'…';
+  return t||model||'未命名对象';
+}
+function assetArt(i,palIdx){
+  const it=ASSETS.items[i], T=ASSETS.tile, model=it[8]||'', prompt=it[9]||'';
+  return { real:true, idx:i,
+    atlasI:it[0], sx:it[1]*T, sy:it[2]*T, tile:T,
+    isVideo:!!it[3], stratum:it[4], likes:it[5], comments:it[6], frames:it[7],
+    model, prompt, srcUrl:it[10], id:it[11],
+    style:'photo', palIdx:(palIdx!==undefined?palIdx:hashStr(model||('m'+i))%PALS.length),
+    title:titleFromPrompt(prompt,model), sheet:null, sheetTried:false, f:0 };
+}
+/* 视频精灵图：并发上限 3，避免一次点开一片就卡 */
+let sheetLoads=0;
+function ensureSheet(a){
+  if(a.sheet||a.sheetTried||!a.frames||sheetLoads>=3)return;
+  a.sheetTried=true; sheetLoads++;
+  const im=new Image();
+  im.onload=()=>{ a.sheet=im; sheetLoads--; };
+  im.onerror=()=>{ sheetLoads--; };
+  im.src=ASSETS.sheetDir+a.id+'.jpg';
+}
+/* 统一取图口：程序纹样 / 图集块 / 视频帧 三种来源同一个调用 */
+function drawArt(ctx,art,dx,dy,dw,dh,active){
+  if(!art||!art.real){ if(art&&art.cv)ctx.drawImage(art.cv,dx,dy,dw,dh); return; }
+  if(art.isVideo&&active){
+    ensureSheet(art);
+    if(art.sheet&&art.sheet.naturalWidth){
+      const T=art.tile, gc=ASSETS.sheetGrid[0];
+      const n=Math.max(1,art.frames);
+      art.f=(art.f+0.22)%n;                 // 约 13fps —— 被注视的内容才会动
+      const f=Math.floor(art.f);
+      ctx.drawImage(art.sheet,(f%gc)*T,Math.floor(f/gc)*T,T,T,dx,dy,dw,dh);
+      return;
+    }
+  }
+  const im=ATLAS[art.atlasI];
+  if(im&&im.naturalWidth) ctx.drawImage(im,art.sx,art.sy,art.tile,art.tile,dx,dy,dw,dh);
+  else { ctx.fillStyle='#DBD6C8'; ctx.fillRect(dx,dy,dw,dh); }
+}
 
 /* ============================================================
    程序化画作 — 九种视觉语言（对应参考图）
@@ -399,18 +466,18 @@ const NAME_A=['雾','晨','霓','蓝','燃','浮','静','回声','像素','折�
 const NAME_B=['之花','切片','讯号','拼贴','标本','日志','花期','残影','频道','风暴','绒球','纹样'];
 function artTitle(){ return pick(NAME_A)+pick(NAME_B); }
 
-/* 画作由物种决定风格与色板 → 同种花天然同一色系纹样 */
+/* 画作由物种决定风格与色板 → 同种花天然同一色系纹样；
+   有真实素材时改从图集取，物种由生成模型决定（结构承载真实变量）。 */
 function makeArt(styleId, palIdx){
+  if(ASSET_ALL.length){
+    const bucket=(palIdx!==undefined&&ASSET_BUCKET[palIdx]&&ASSET_BUCKET[palIdx].length)
+      ? ASSET_BUCKET[palIdx] : ASSET_ALL;
+    return assetArt(bucket[Math.floor(Math.random()*bucket.length)], palIdx);
+  }
   const c=document.createElement('canvas'); c.width=c.height=ASZ;
   const ctx=c.getContext('2d');
   if(styleId===undefined) styleId=pick(Object.keys(ART_GENS));
   if(palIdx===undefined) palIdx=RI(0,PALS.length-1);
-  if(IMG_POOL.length && Math.random()<0.88){
-    const im=pick(IMG_POOL);
-    const s=Math.max(ASZ/im.width,ASZ/im.height), w=im.width*s, h=im.height*s;
-    ctx.drawImage(im,(ASZ-w)/2,(ASZ-h)/2,w,h);
-    return {cv:c, style:'photo', palIdx, title:artTitle(), real:true};
-  }
   ART_GENS[styleId](ctx,PALS[palIdx]);
   return {cv:c, style:styleId, palIdx, title:artTitle(), real:false};
 }
@@ -421,7 +488,9 @@ function toast(msg){ const d=document.createElement('div'); d.className='toast';
   const w=$('toasts'); w.appendChild(d);
   while(w.children.length>3) w.firstChild.remove();
   setTimeout(()=>d.remove(),4100); }
-function rows(el,pairs){ el.innerHTML=pairs.map(p=>`<div class="krow"><span>${p[0]}</span><span>${p[1]}</span></div>`).join(''); }
+/* pairs: [标签, 值] 或 [标签, 值, 'col'] —— col 表示长文本独占一行 */
+function rows(el,pairs){ el.innerHTML=pairs.map(p=>
+  `<div class="krow${p[2]?' '+p[2]:''}"><span>${p[0]}</span><span>${p[1]}</span></div>`).join(''); }
 
 function fit(cv){ const r=cv.parentElement.getBoundingClientRect(), d=window.devicePixelRatio||1;
   cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d);
@@ -702,7 +771,7 @@ function renderBloom(){
     ctx.fillStyle='rgba(38,33,26,.13)';
     ctx.fillRect(ix-s/2+3/z, iy-s/2+3/z, s, s);
     ctx.imageSmoothingEnabled=!seedy;
-    ctx.drawImage(it.art.cv, ix-s/2, iy-s/2, s, s);
+    drawArt(ctx, it.art, ix-s/2, iy-s/2, s, s, it===B.sel||it.att>12);
     ctx.imageSmoothingEnabled=true;
     ctx.lineWidth=1/z; ctx.strokeStyle='rgba(38,33,26,.5)';
     ctx.strokeRect(ix-s/2,iy-s/2,s,s);
@@ -736,19 +805,34 @@ function renderBloom(){
   }
 }
 
+/* 档案卡：有真实素材时显示真实出处与实测/文献能耗，
+   并用来源标签区分"实测 / 文献 / 示意"，不把虚构数值伪装成纪实。 */
+const ENERGY_REF={image:[0.06,2.9], video:[8,60], multi:[1.0,5.0]};
+function energyRow(t,real){
+  const r=ENERGY_REF[t.id]||ENERGY_REF.image;
+  return real ? [`${r[0]}–${r[1]} Wh`,'文献 LIT.'] : [t.gen.toFixed(2)+' Wh','示意 ILLUS.'];
+}
 function refreshCardB(){ const it=B.sel; if(!it)return;
   $('cbTitle').textContent=it.id+' · 生成对象档案';
   const stZh=it.state==='ascend'?'迁移中 → 花园':(it.state==='fading'?'褪色中':'存活');
-  rows($('cbRows'),[
-    ['名称 TITLE', it.art.title],
-    ['类型 TYPE', `${it.type.zh} ${it.type.en}`],
-    ['生成模型 MODEL', it.model],
-    ['诞生 BORN', fmtT(it.born)],
-    ['世代 GEN', 'G'+it.gen],
-    ['累计注意力 ATT', it.att.toFixed(1)],
-    ['生成成本 COST', it.type.gen.toFixed(2)+' Wh'],
-    ['状态 STATE', stZh]
-  ]);
+  const a=it.art, [ev,esrc]=energyRow(it.type,a.real);
+  const R=[['名称 TITLE', a.title]];
+  if(a.real){
+    R.push(['生成模型 MODEL', a.model||'—']);
+    if(a.prompt)R.push(['提示词 PROMPT', a.prompt.slice(0,96), 'col']);
+    R.push(['地层 STRATUM', a.stratum+' 年']);
+    R.push(['平台互动 REACTIONS', a.likes+' ♥ / '+a.comments+' 评']);
+  } else {
+    R.push(['类型 TYPE', `${it.type.zh} ${it.type.en}`]);
+    R.push(['生成模型 MODEL', it.model]);
+  }
+  R.push(['诞生 BORN', fmtT(it.born)]);
+  R.push(['世代 GEN', 'G'+it.gen]);
+  R.push(['累计注意力 ATT', it.att.toFixed(1)]);
+  R.push(['生成能耗 ENERGY', `${ev} <span style="opacity:.45">${esrc}</span>`]);
+  R.push(['状态 STATE', stZh]);
+  if(a.real&&a.srcUrl)R.push(['出处 SOURCE','civitai']);
+  rows($('cbRows'),R);
 }
 (function(){ const L=$('legBloom');
   const items=[...TYPES.map(t=>[t.color,`${t.zh} ${t.en}`]), ['#948B7C','残骸 DEBRIS']];
@@ -1236,8 +1320,8 @@ function drawMount(ctx,p,size,fade){
   ctx.fillStyle='#F4F0E5'; ctx.fillRect(-s/2,-s/2,s,s);      // 纸托
   ctx.save();
   if(fade>0)ctx.filter=`saturate(${(1-fade*.85).toFixed(2)}) brightness(${(1-fade*.16).toFixed(2)})`;
-  ctx.imageSmoothingEnabled=!p.art.real;
-  ctx.drawImage(p.art.cv,-s/2+m,-s/2+m,s-m*2,s-m*2-m*.6);
+  ctx.imageSmoothingEnabled=!!p.art.real;
+  drawArt(ctx,p.art,-s/2+m,-s/2+m,s-m*2,s-m*2-m*.6, G.sel===p||p.att>20);
   ctx.imageSmoothingEnabled=true;
   ctx.restore();
   ctx.lineWidth=.9; ctx.strokeStyle=INKLINE;
@@ -1865,18 +1949,27 @@ function refreshCardG(){ const p=G.sel; if(!p)return;
   $('cgTitle').textContent=p.id+' · 物种档案 SPECIES';
   const state=p.state==='dying'?'倒伏中 COLLAPSING':(p.state==='dormant'?'休眠 DORMANT':
               (p.wilt>0.15?'缺乏注意力 WILTING':(tr&&tr.on?'群落成员 · 潮流中':'健康 HEALTHY')));
-  rows($('cgRows'),[
+  const a=p.art, [ev,esrc]=energyRow(p.type,a.real);
+  const R=[
     ['物种 SPECIES', `<i class="swatch" style="background:${sp.c0}"></i>${sp.zh} ${sp.en}`],
-    ['作品 WORK', p.art.title],
-    ['生成模型 MODEL', p.model+' · '+p.type.zh],
-    ['诞生 BORN', fmtT(p.born)],
-    ['阶段 STAGE', `${st.zh} ${st.en} ${p.stage}/8`],
-    ['分枝 / 后代', `${p.branches.length} / ${p.children}`],
-    ['注意力 ATT', p.att.toFixed(1)],
-    ['计算成本 COMPUTE', p.energy.toFixed(2)+' Wh'],
-    ['潮流 TREND', tr&&tr.on?('成簇中 ● ×'+tr.n):'—'],
-    ['生态状态 STATE', state]
-  ]);
+    ['作品 WORK', a.title]
+  ];
+  if(a.real){
+    R.push(['生成模型 MODEL', a.model||'—']);
+    if(a.prompt)R.push(['提示词 PROMPT', a.prompt.slice(0,96), 'col']);
+    R.push(['地层 STRATUM', a.stratum+' 年'+(a.isVideo?' · 视频':'')]);
+    R.push(['平台互动 REACTIONS', a.likes+' ♥ / '+a.comments+' 评']);
+  } else {
+    R.push(['生成模型 MODEL', p.model+' · '+p.type.zh]);
+  }
+  R.push(['诞生 BORN', fmtT(p.born)]);
+  R.push(['阶段 STAGE', `${st.zh} ${st.en} ${p.stage}/8`]);
+  R.push(['分枝 / 后代', `${p.branches.length} / ${p.children}`]);
+  R.push(['注意力 ATT', p.att.toFixed(1)]);
+  R.push(['生成能耗 ENERGY', `${ev} <span style="opacity:.45">${esrc}</span>`]);
+  R.push(['潮流 TREND', tr&&tr.on?('成簇中 ● ×'+tr.n):'—']);
+  R.push(['生态状态 STATE', state]);
+  rows($('cgRows'),R);
 }
 function refreshCardN(){ const nd=G.selNode; if(!nd)return;
   $('cnTitle').textContent=nd.zh+' · 代谢档案';
