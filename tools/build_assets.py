@@ -28,6 +28,8 @@ try:
     from PIL import Image
 except ImportError:
     sys.exit("需要 Pillow：pip install pillow numpy")
+# Pillow 10 把重采样常量搬进了 Image.Resampling，这里两边都兼容
+LANCZOS = getattr(getattr(Image, "Resampling", Image), "LANCZOS")
 try:
     import numpy as np
 except ImportError:
@@ -83,7 +85,7 @@ def center_crop(im, size):
     w, h = im.size
     s = min(w, h)
     im = im.crop(((w - s) // 2, (h - s) // 2, (w + s) // 2, (h + s) // 2))
-    return im.resize((size, size), Image.LANCZOS)
+    return im.resize((size, size), LANCZOS)
 
 
 def video_frames(path, n, size):
@@ -106,7 +108,7 @@ def video_frames(path, n, size):
 
 
 def signature(im):
-    g = im.convert("L").resize((16, 16), Image.LANCZOS)
+    g = im.convert("L").resize((16, 16), LANCZOS)
     v = np.asarray(g, dtype=np.float32).ravel()
     v -= v.mean()
     n = np.linalg.norm(v)
@@ -114,7 +116,7 @@ def signature(im):
 
 
 def color_hist(im):
-    a = np.asarray(im.resize((32, 32), Image.LANCZOS), dtype=np.float32) / 255.0
+    a = np.asarray(im.resize((32, 32), LANCZOS), dtype=np.float32) / 255.0
     q = np.clip((a * 3).astype(np.int32), 0, 2)
     idx = q[..., 0] * 9 + q[..., 1] * 3 + q[..., 2]
     h = np.bincount(idx.ravel(), minlength=27).astype(np.float32)
