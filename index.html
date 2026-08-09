@@ -48,10 +48,12 @@ canvas.stage{position:absolute;inset:0;width:100%;height:100%;display:block;curs
 .legend i{width:10px;height:10px;border-radius:50%;border:1.7px solid;display:inline-block;margin-right:5px;vertical-align:-1px}
 
 /* ---------- cards（悬停即显，无需点击） ---------- */
-.card{position:absolute;right:14px;bottom:14px;width:250px;background:var(--panel);border:1px solid var(--ink);
+.card{position:absolute;right:14px;bottom:14px;width:246px;background:var(--panel);border:1px solid var(--ink);
   padding:11px 13px 12px;box-shadow:4px 4px 0 rgba(38,33,26,.14);z-index:30;
   opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .28s ease,transform .28s ease}
 .card.on{opacity:1;transform:none}
+/* 档案卡靠向观众没在看的那一侧，别压住正在注视的花 */
+.card.toLeft{right:auto;left:14px}
 .card h4{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:2px;margin-bottom:8px}
 .krow{display:flex;justify-content:space-between;gap:8px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;
   padding:3.5px 0;border-bottom:1px dashed rgba(38,33,26,.2)}
@@ -160,6 +162,7 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
     <div class="toolbar">
       <button class="btn" id="btnSurface">↑ 地表 SURFACE</button>
       <button class="btn" id="btnRoots">↓ 地下代谢 METABOLISM</button>
+      <button class="btn" id="btnReseed">↻ 重播 RESEED</button>
     </div>
     <div id="depthHud">
       <div class="dVal" id="dVal">0 m</div>
@@ -228,7 +231,8 @@ const CONFIG = {
   minPlants: 5,          // 低于此数才随机自生一株（避免画面全空）
   targetPlants: 7,       // 保留字段：其它逻辑参考的种群基准
   speciesCap: 7,         // 单一物种上限（群落规模）
-  idleSec: 12            // 多久无输入 → 算法注视接管
+  idleSec: 60,           // 多久无输入 → 算法注视接管（展厅可调低）
+  autoGain: 0.12         // 算法注视的浇灌力度（相对观众的比例，近乎不作为）
 };
 const Q = new URLSearchParams(location.search);
 
@@ -876,14 +880,14 @@ for(let i=0;i<26;i++){ const it=spawnItem();
 
 /* ---- 物种图鉴：形态 / 色系 / 画作风格 三位一体 ---- */
 const SPECIES=[
-  {zh:'十字菀', en:'CROSSVANE', pal:0, style:'stitch',  form:'blade',  hMul:1.00, gMul:1.00, petals:8},
-  {zh:'铃钟兰', en:'BELLNET',   pal:1, style:'bars',    form:'bell',   hMul:0.92, gMul:0.94, petals:3},
-  {zh:'穗序草', en:'SPIKELET',  pal:2, style:'mosaic',  form:'spike',  hMul:1.16, gMul:1.10, petals:6},
-  {zh:'伞形藻', en:'UMBRELLE',  pal:3, style:'blob',    form:'umbel',  hMul:0.96, gMul:1.00, petals:5},
-  {zh:'涡卷莲', en:'SPIRALIS',  pal:4, style:'spiral',  form:'ring',   hMul:0.86, gMul:0.90, petals:6},
-  {zh:'蝶尾菊', en:'PAPILIO',   pal:5, style:'botanic', form:'wing',   hMul:1.04, gMul:1.00, petals:2},
-  {zh:'流苏柳', en:'FRINGEA',   pal:6, style:'photo',   form:'fringe', hMul:1.12, gMul:0.96, petals:7},
-  {zh:'墨点兰', en:'INKSPOT',   pal:7, style:'pebble',  form:'dot',    hMul:0.90, gMul:1.04, petals:9}
+  {zh:'十字菀', en:'CROSSVANE', pal:0, style:'stitch',  form:'blade',  hMul:1.00, gMul:1.00, petals:8, mk:1.00},
+  {zh:'铃钟兰', en:'BELLNET',   pal:1, style:'bars',    form:'bell',   hMul:0.92, gMul:0.94, petals:3, mk:0.60},
+  {zh:'穗序草', en:'SPIKELET',  pal:2, style:'mosaic',  form:'spike',  hMul:1.16, gMul:1.10, petals:6, mk:0.56},
+  {zh:'伞形藻', en:'UMBRELLE',  pal:3, style:'blob',    form:'umbel',  hMul:0.96, gMul:1.00, petals:5, mk:0.62},
+  {zh:'涡卷莲', en:'SPIRALIS',  pal:4, style:'spiral',  form:'ring',   hMul:0.86, gMul:0.90, petals:6, mk:0.92},
+  {zh:'蝶尾菊', en:'PAPILIO',   pal:5, style:'botanic', form:'wing',   hMul:1.04, gMul:1.00, petals:2, mk:0.80},
+  {zh:'流苏柳', en:'FRINGEA',   pal:6, style:'photo',   form:'fringe', hMul:1.12, gMul:0.96, petals:7, mk:0.72},
+  {zh:'墨点兰', en:'INKSPOT',   pal:7, style:'pebble',  form:'dot',    hMul:0.90, gMul:1.04, petals:9, mk:0.94}
 ];
 SPECIES.forEach((sp,i)=>{ sp.idx=i; sp.c0=PALS[sp.pal][0]; sp.c1=PALS[sp.pal][1]; sp.c2=PALS[sp.pal][2]; });
 
@@ -1008,11 +1012,15 @@ function plantAt(o={}){
     row=c.indexOf(Math.min(...c)); if(Math.random()<.3)row=RI(0,3); }
   let fx;
   if(o.nearFx!==undefined) fx=clamp(o.nearFx+R(.085,.17)*(Math.random()<.5?-1:1),.05,.95);
-  else{ let best=.5,bd=-1;
-    for(let k=0;k<12;k++){ const cnd=R(.05,.95); let d=1e9;
-      G.plants.forEach(q=>{ if(q.row===row) d=Math.min(d,Math.abs(q.fx-cnd)); });
-      if(!G.plants.some(q=>q.row===row))d=1;
-      if(d>bd){bd=d;best=cnd;} }
+  else{ let best=.5,bs=-1;
+    for(let k=0;k<18;k++){ const cnd=R(.06,.94); let sc=1e9;
+      G.plants.forEach(q=>{
+        // 同排要让位；更靠前、花头更大的邻居遮挡力更强，也要让
+        const occl=(q.row>row? 1.9 : 1.0)*(0.5+(q.head||0)/70);
+        const w2=(q.row===row?1.6:1.0)*occl;
+        sc=Math.min(sc, Math.abs(q.fx-cnd)/Math.max(.4,w2)); });
+      if(!G.plants.length)sc=1;
+      if(sc>bs){bs=sc;best=cnd;} }
     fx=best; }
   const type=o.type||pickType();
   const art0=o.art||makeArt(sp.style, sp.pal);
@@ -1123,8 +1131,8 @@ function updateGarden(dt){
 
   // 相机：手动目标 / 闲置巡游（多数时间停在地表，偶尔下潜看代谢）
   if(active&&GAZE.mode==='auto'){
-    const TOUR=[{y:0,hold:72},{y:UG.layers[2].y-h*.30,hold:26},
-                {y:0,hold:60},{y:UG.layers[4].y-h*.32,hold:26}];
+    const TOUR=[{y:0,hold:240},{y:UG.layers[2].y-h*.30,hold:30},
+                {y:0,hold:240},{y:UG.layers[4].y-h*.32,hold:30}];
     G.tour+=dt;
     if(G.tour>TOUR[G.tourPhase].hold){ G.tour=0;
       G.tourPhase=(G.tourPhase+1)%TOUR.length;
@@ -1165,8 +1173,10 @@ function updateGarden(dt){
     const topWy=rowWy-p.h*p.rs-headEx;
     const near=active&&Math.abs(GAZE.x-x)<52*p.rs+10&&gwy>topWy&&gwy<rowWy+16;
     if(near&&avail){
-      const g=19*dt; p.att=Math.min(60,p.att+g);
-      if(GAZE.mode==='visitor')drain+=g*.5;
+      // 观众的注视是主力；算法只留极弱的托底，避免无人时全园枯死
+      const gain=(GAZE.mode==='visitor')?36:36*CONFIG.autoGain;
+      const g=gain*dt; p.att=Math.min(60,p.att+g);
+      if(GAZE.mode==='visitor')drain+=g*.28;
       S.energy+=g*.005;
       if(p.state==='dormant'){ p.dry-=dt*13;
         if(p.dry<26){ p.state='alive'; p.dormT=0; toast(p.id+' 自休眠中苏醒 AWAKE'); } }
@@ -1179,7 +1189,7 @@ function updateGarden(dt){
     if(tr&&tr.on&&p.stage>=5) p.att=Math.min(60,p.att+dt*0.55);
 
     // 平台的基础曝光：任何内容都会分到一点推荐流量，够它慢慢活着
-    p.att=Math.min(60, p.att+dt*0.26);
+    p.att=Math.min(60, p.att+dt*0.15);
     let comp=0; G.plants.forEach(q=>{ if(q!==p&&q.row===p.row&&Math.abs(q.fx-p.fx)*w<64)comp++; });
     p.att=Math.max(0, p.att-dt*(0.34+comp*0.15));
 
@@ -1240,8 +1250,10 @@ function updateGarden(dt){
     const nx=Math.min(p.stage+1,STG.length-1);
     const tH=(STG[p.stage].h+(STG[p.stage].dur?p.g*(STG[nx].h-STG[p.stage].h):0))
              *sp.hMul*p.hJit*(0.82+p.vig*0.30);
+    // 越靠前的排，花头相对收敛一点，避免整片挡住后排
+    const rowCap=[1.12,1.06,1.0,0.9][p.row];
     const tHead=(STG[p.stage].head+(STG[p.stage].dur?p.g*(STG[nx].head-STG[p.stage].head):0))
-             *p.headJit*p.vig;
+             *p.headJit*p.vig*rowCap;
     p.h=lerp(p.h,tH,dt*1.8);
     p.head=lerp(p.head,tHead,dt*1.8);
     p.rootT=Math.min(1,p.rootT+dt*1.2);
@@ -1353,25 +1365,34 @@ function riso(ctx,drawFn,cMain,cGhost,ox,oy){
 }
 function dim(c,p){ return p>0?mixHex(c,'#A8A498',p):c; }
 
-/* 画作装裱：略微倾斜的纸托 + 作品 + 细墨框（呼应展墙上的小画） */
+/* 画作：直接是一枚圆角方图，无纸托白边 —— 只留一道极细墨线与轻投影 */
+function roundRect(ctx,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
 function drawMount(ctx,p,size,fade,art){
   art=art||p.art;
-  const s=size, m=s*.11;
+  const s=size, r=s*0.13;
   ctx.save();
-  ctx.rotate(Math.sin(p.seed*3.1)*.06);
-  ctx.fillStyle='rgba(38,33,26,.14)'; ctx.fillRect(-s/2+2,-s/2+2.4,s,s);
-  ctx.fillStyle='#F4F0E5'; ctx.fillRect(-s/2,-s/2,s,s);      // 纸托
+  ctx.rotate(Math.sin(p.seed*3.1)*.05);
+  // 轻投影，让画作从花瓣上浮起来一点
+  ctx.fillStyle='rgba(38,33,26,.18)';
+  roundRect(ctx,-s/2+1.8,-s/2+2.2,s,s,r); ctx.fill();
   ctx.save();
+  roundRect(ctx,-s/2,-s/2,s,s,r); ctx.clip();
   if(fade>0)ctx.filter=`saturate(${(1-fade*.85).toFixed(2)}) brightness(${(1-fade*.16).toFixed(2)})`;
   ctx.imageSmoothingEnabled=!!art.real;
-  drawArt(ctx,art,-s/2+m,-s/2+m,s-m*2,s-m*2-m*.6, G.sel===p||p.att>20);
+  drawArt(ctx,art,-s/2,-s/2,s,s, G.sel===p||p.att>20);
   ctx.imageSmoothingEnabled=true;
   ctx.restore();
-  ctx.lineWidth=.9; ctx.strokeStyle=INKLINE;
-  ctx.strokeRect(-s/2+m,-s/2+m,s-m*2,s-m*2-m*.6);
-  ctx.strokeRect(-s/2,-s/2,s,s);
-  if(s>26){ ctx.fillStyle='rgba(38,33,26,.34)';               // 标签细线
-    ctx.fillRect(-s/2+m,s/2-m*1.2,(s-m*2)*.58,.9); }
+  ctx.lineWidth=Math.max(.8,s*.014); ctx.strokeStyle='rgba(38,33,26,.62)';
+  roundRect(ctx,-s/2,-s/2,s,s,r); ctx.stroke();
   ctx.restore();
 }
 
@@ -1386,7 +1407,8 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
   const t=easeOut(open), R2=hd*t;
   if(R2<3)return;
   const nP=Math.max(2,(sp.petals||6)+(p.petalJit||0));
-  const mount=Math.min(hd*1.02, R2*1.34);   // 画作几乎占满花心
+  const mk=sp.mk||1;
+  const mount=Math.min(hd*1.02, R2*1.34)*mk;   // 画作占比按花形而定，别把花吞掉
   const breathe=1+Math.sin(G.t*.9+p.seed)*.018;
   ctx.save(); ctx.scale(breathe,breathe);
 
@@ -1492,7 +1514,13 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
       break; }
   }
   ctx.restore();
-  if(mount>6) drawMount(ctx,p,mount,Math.max(p.grayV,p.wilt*.6),art);
+  if(mount>6){
+    const off=(sp.form==='bell'||sp.form==='fringe')? -R2*.52
+            : (sp.form==='spike')? R2*.30 : 0;
+    ctx.save(); ctx.translate(0,off);
+    drawMount(ctx,p,mount,Math.max(p.grayV,p.wilt*.6),art);
+    ctx.restore();
+  }
 }
 
 /* ---- 茎：细锥形墨绿线，风摆 + 枯垂 ---- */
@@ -1509,11 +1537,13 @@ function drawPlant(ctx,p){
     // 种子上带一枚小画作 —— 让人看得出种下去的是哪张图
     const ss=13+7*easeOut(p.g);
     ctx.save(); ctx.translate(0,-ss*.62-2); ctx.rotate(Math.sin(p.seed*3)*.12);
-    ctx.fillStyle='rgba(38,33,26,.16)'; ctx.fillRect(-ss/2+1.5,-ss/2+1.8,ss,ss);
-    ctx.fillStyle='#F4F0E5'; ctx.fillRect(-ss/2,-ss/2,ss,ss);
+    ctx.fillStyle='rgba(38,33,26,.18)';
+    roundRect(ctx,-ss/2+1.3,-ss/2+1.6,ss,ss,ss*.2); ctx.fill();
+    ctx.save(); roundRect(ctx,-ss/2,-ss/2,ss,ss,ss*.2); ctx.clip();
     ctx.imageSmoothingEnabled=!!p.art.real;
-    drawArt(ctx,p.art,-ss/2+1.4,-ss/2+1.4,ss-2.8,ss-2.8,false);
-    ctx.lineWidth=.9; ctx.strokeStyle=INKLINE; ctx.strokeRect(-ss/2,-ss/2,ss,ss);
+    drawArt(ctx,p.art,-ss/2,-ss/2,ss,ss,false); ctx.restore();
+    ctx.lineWidth=.9; ctx.strokeStyle='rgba(38,33,26,.62)';
+    roundRect(ctx,-ss/2,-ss/2,ss,ss,ss*.2); ctx.stroke();
     ctx.restore();
     ctx.strokeStyle=dim('#6E8A58',f); ctx.lineWidth=1.6; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-ss*.3); ctx.stroke();
@@ -1911,11 +1941,14 @@ function renderGarden(){
   // 落籽 / 粒子 / 蝴蝶
   G.seedsF.forEach(sd=>{ const y=gy(sd.wy), ss=15;
     ctx.save(); ctx.translate(sd.x,y); ctx.rotate(Math.sin(G.t*2.4+sd.ph)*.22);
-    ctx.fillStyle='rgba(38,33,26,.16)'; ctx.fillRect(-ss/2+1.4,-ss/2+1.6,ss,ss);
-    ctx.fillStyle='#F4F0E5'; ctx.fillRect(-ss/2,-ss/2,ss,ss);
+    ctx.fillStyle='rgba(38,33,26,.18)';
+    roundRect(ctx,-ss/2+1.3,-ss/2+1.6,ss,ss,ss*.2); ctx.fill();
+    ctx.save(); roundRect(ctx,-ss/2,-ss/2,ss,ss,ss*.2); ctx.clip();
     if(sd.art){ ctx.imageSmoothingEnabled=!!sd.art.real;
-      drawArt(ctx,sd.art,-ss/2+1.3,-ss/2+1.3,ss-2.6,ss-2.6,false); }
-    ctx.lineWidth=.9; ctx.strokeStyle=INKLINE; ctx.strokeRect(-ss/2,-ss/2,ss,ss);
+      drawArt(ctx,sd.art,-ss/2,-ss/2,ss,ss,false); }
+    ctx.restore();
+    ctx.lineWidth=.9; ctx.strokeStyle='rgba(38,33,26,.62)';
+    roundRect(ctx,-ss/2,-ss/2,ss,ss,ss*.2); ctx.stroke();
     ctx.restore();
     ctx.fillStyle=hexA(SPECIES[sd.si].c0,.5); ctx.fillRect(sd.x-1,y-ss*.8,2,4); });
   const P=G.parts;
@@ -1962,6 +1995,7 @@ cG.addEventListener('wheel',e=>{ e.preventDefault();
 },{passive:false});
 $('btnSurface').onclick=()=>{ G.camT=0; G.tour=-9999; };
 $('btnRoots').onclick=()=>{ G.camT=Math.min(camMax(), UG.layers[3].y-cG._h*.30); G.tour=-9999; };
+$('btnReseed').onclick=()=>{ reseedGarden(); toast('花园已重播 —— 新的一园'); };
 
 /* ============================================================
    悬停档案（注视到什么就展开什么 —— 算法注视时同样生效）
@@ -1988,6 +2022,11 @@ function syncCards(dt){
   show('cardB', activePage==='bloom'&&!!B.sel, 'B');
   show('cardG', activePage==='garden'&&!!G.sel, 'G');
   show('cardN', activePage==='garden'&&!!G.selNode, 'N');
+  // 卡片挪到观众没在看的一侧，避免压住正被注视的花
+  const rightHalf=(G.sel? G.sel.fx>0.56 : (GAZE.x>cG._w*0.56));
+  $('cardG').classList.toggle('toLeft', rightHalf);
+  $('cardN').classList.toggle('toLeft', rightHalf);
+  if(activePage==='bloom')$('cardB').classList.toggle('toLeft', GAZE.x>cB._w*0.58);
 }
 function refreshCardG(){ const p=G.sel; if(!p)return;
   const sp=p.sp, tr=G.trends[p.si], st=STG[p.stage];
