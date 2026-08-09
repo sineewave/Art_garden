@@ -26,7 +26,10 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 /* ---------- header ---------- */
 header{display:flex;align-items:center;gap:16px;padding:9px 16px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;position:relative;z-index:20}
 .brand{line-height:1.2}
-.brand .zh{font-family:"Songti SC","Noto Serif SC","Noto Serif CJK SC",serif;font-weight:700;font-size:17px;letter-spacing:5px}
+/* 标题字体：拉丁走 Optima 一路的人文无衬线，中文回落到宋体 */
+.brand .zh{font-family:Optima,"Optima nova",Candara,"Gill Sans Nova","Gill Sans","Gill Sans MT",
+  "Songti SC","Noto Serif SC","Noto Serif CJK SC",serif;
+  font-weight:500;font-size:19px;letter-spacing:5.5px;line-height:1.15}
 .brand .en{font-family:ui-monospace,Menlo,monospace;font-size:8.5px;letter-spacing:2.6px;opacity:.5}
 nav{display:flex;gap:5px;margin-left:6px}
 .tab{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1.4px;padding:6px 13px;
@@ -195,7 +198,8 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
 #intro{position:fixed;inset:0;background:rgba(242,243,241,.97);display:flex;align-items:center;justify-content:center;z-index:120;padding:20px}
 .introBox{max-width:560px;background:var(--panel);border:1px solid var(--line-soft);border-radius:16px;
   box-shadow:0 18px 44px rgba(46,45,40,.14);padding:34px 36px 30px;position:relative}
-.introBox h1{font-family:"Songti SC","Noto Serif SC",serif;font-size:33px;letter-spacing:11px;font-weight:700;margin-bottom:4px}
+.introBox h1{font-family:Optima,"Optima nova",Candara,"Gill Sans Nova","Gill Sans","Gill Sans MT",
+  "Songti SC","Noto Serif SC",serif;font-size:34px;letter-spacing:9px;font-weight:500;margin-bottom:6px}
 .introBox .sub{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:3px;opacity:.55;margin-bottom:18px}
 .introBox p{font-size:12.5px;line-height:1.85;opacity:.85;margin-bottom:14px}
 .introRow{display:flex;gap:10px;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;line-height:1.7;margin-bottom:5px}
@@ -217,7 +221,7 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
 
 <header>
   <div class="brand">
-    <div class="zh">注意力花园</div>
+    <div class="zh" id="brandT">注意力花园</div>
     <div class="en">ATTENTION&nbsp;GARDEN · SYNTHETIC&nbsp;ECOLOGY</div>
   </div>
   <nav>
@@ -279,6 +283,7 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
     <button id="btnSet" aria-label="设置 SETTINGS" aria-expanded="false">⚙</button>
     <div id="setPop">
       <button class="popItem" id="popReseed">↻ 重播花园 RESEED</button>
+      <button class="popItem" id="popReseedB">↻ 重播信息流 RESEED FEED</button>
       <button class="popItem" id="popLang">Switch to English</button>
       <button class="popItem" id="popShow">⛶ 全屏观赏 SHOW MODE</button>
       <button class="popItem" id="popUpload">＋ 载入图片 IMAGES</button>
@@ -299,7 +304,7 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
 <div id="intro">
   <div class="introBox">
     <div class="introStamp">SYNTH<br>ECO·26</div>
-    <h1>注意力花园</h1>
+    <h1 id="introH1">注意力花园</h1>
     <div class="sub">ATTENTION GARDEN — AN ARTIFICIAL ECOLOGY OF GENERATED CONTENT</div>
     <p id="introP">生成对象不断涌入信息流。注视是它们唯一的养分：被看见的成长、分枝、落籽、聚成潮流；久无人问津的转入休眠，直至化为数字残骸。花园之下，一套由采集、传输、存储排序、模型推理与能源冷却构成的代谢根系持续运转。</p>
     <div class="introRow"><b id="ir1b">无需点击</b><span id="ir1s">移动鼠标即可注视 · 停留在对象上自动展开档案</span></div>
@@ -350,6 +355,12 @@ const Q = new URLSearchParams(location.search);
    没人看时衰减多快。调它们等于调这个生态有多严苛。
    ============================================================ */
 const TUNE_DEF={
+  // —— 信息流 ——
+  spawnMs:  340,    // 多久生成一个新对象
+  maxLive:  160,    // 同屏最大对象数
+  feedGain: 26,     // 注视喂养信息流对象的力度
+  bgSpawn:  0.25,   // 你不在这一页时，生成速率打几折（1 = 照常刷）
+  // —— 花园 ——
   gazeGain: 36,     // 观众注视的浇灌力度（每秒注意力）
   autoGain: 0.12,   // 算法注视相对观众的比例（0 = 算法完全不作为）
   ambient:  0.24,   // 推荐流底噪：任何内容都会分到的曝光（0 = 无人问津即枯）
@@ -361,15 +372,19 @@ const TUNE_DEF={
   dormDie:  240     // 休眠多久后化为数字残骸（真正决定「会不会消亡」的那一档）
 };
 const TUNE_META=[
-  ['gazeGain',  ['观众注视','VISITOR GAZE'], 6,   80,  1,    v=>v.toFixed(0)],
-  ['autoGain',  ['算法注视','ALGO GAZE'],    0,   1,   .01,  v=>'×'+v.toFixed(2)],
-  ['ambient',   ['推荐底噪','AMBIENT REACH'],0,   .8,  .01,  v=>v.toFixed(2)],
-  ['decay',     ['注意力衰减','DECAY'],      0,   1.2, .01,  v=>v.toFixed(2)],
-  ['growth',    ['生长速度','GROWTH'],       .3,  3,   .05,  v=>'×'+v.toFixed(2)],
-  ['maxPlants', ['最大植株','MAX PLANTS'],   6,   40,  1,    v=>v.toFixed(0)],
-  ['speciesCap',['单种上限','SPECIES CAP'],  1,   8,   1,    v=>v.toFixed(0)],
-  ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s'],
-  ['dormDie',   ['休眠→残骸','DORMANT→DEBRIS'],30,600,10,   v=>v.toFixed(0)+'s']
+  ['spawnMs',   ['生成间隔','SPAWN EVERY'],  120, 1600,20,   v=>v.toFixed(0)+'ms','bloom'],
+  ['maxLive',   ['同屏上限','MAX ON SCREEN'],40,  300, 10,   v=>v.toFixed(0),'bloom'],
+  ['feedGain',  ['注视喂养','FEED GAIN'],    4,   60,  1,    v=>v.toFixed(0),'bloom'],
+  ['bgSpawn',   ['离开时生成','WHILE AWAY'], 0,   1,   .05,  v=>'×'+v.toFixed(2),'bloom'],
+  ['gazeGain',  ['观众注视','VISITOR GAZE'], 6,   80,  1,    v=>v.toFixed(0),'garden'],
+  ['ambient',   ['推荐底噪','AMBIENT REACH'],0,   .8,  .01,  v=>v.toFixed(2),'garden'],
+  ['decay',     ['注意力衰减','DECAY'],      0,   1.2, .01,  v=>v.toFixed(2),'garden'],
+  ['growth',    ['生长速度','GROWTH'],       .3,  3,   .05,  v=>'×'+v.toFixed(2),'garden'],
+  ['maxPlants', ['最大植株','MAX PLANTS'],   6,   40,  1,    v=>v.toFixed(0),'garden'],
+  ['speciesCap',['单种上限','SPECIES CAP'],  1,   8,   1,    v=>v.toFixed(0),'garden'],
+  ['dormDie',   ['休眠→残骸','DORMANT→DEBRIS'],30,600,10,   v=>v.toFixed(0)+'s','garden'],
+  ['autoGain',  ['算法注视','ALGO GAZE'],    0,   1,   .01,  v=>'×'+v.toFixed(2),'both'],
+  ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s','both']
 ];
 const TUNE=Object.assign({},TUNE_DEF);
 try{ const saved=JSON.parse(localStorage.getItem('ag_tune')||'{}');
@@ -445,6 +460,10 @@ try{ LANG=localStorage.getItem('ag_lang')||'zh'; }catch(_){}
 const bi=(zh,en)=>LANG==='zh'?(zh+' '+en):en;     // 标签：中文态双语并置，EN 态纯英
 const tt=(zh,en)=>LANG==='zh'?zh:en;              // 长句：二选一
 const UI_TXT={
+  brandT:['注意力花园','ATTENTION GARDEN'],
+  introH1:['注意力花园','ATTENTION GARDEN'],
+  popReseedB:['↻ 重播信息流 RESEED FEED','↻ RESEED FEED'],
+  popTuneB:['信息流 FEED','FEED'],
   tabBloomT:['Ⅰ 信息爆炸 BLOOM','Ⅰ INFORMATION BLOOM'],
   tabGardenT:['Ⅱ 注意力花园 GARDEN','Ⅱ ATTENTION GARDEN'],
   slGen:['已生成','GENERATED'], slMig:['迁入花园','MIGRATED'],
@@ -1141,19 +1160,6 @@ function drawGazeRing(ctx,x,y){
   // 外面再套一层更淡更慢的膜，吹大的泡才有那种双层感
   ctx.strokeStyle=`rgba(${col},${auto?.10:.16})`; ctx.lineWidth=1;
   bubblePath(ctx,x,y,r,t*0.62+1.9,1.045); ctx.stroke();
-  // 高光：一段沿膜滑动的弧 + 一小点反光
-  ctx.strokeStyle=`rgba(255,255,255,${auto?.26:.38})`; ctx.lineWidth=2.1;
-  ctx.lineCap='round';
-  const ha=-2.35+Math.sin(t*0.33)*0.30;
-  ctx.beginPath(); ctx.arc(x,y,r*0.80,ha,ha+0.62); ctx.stroke();
-  ctx.strokeStyle=`rgba(255,255,255,${auto?.16:.24})`; ctx.lineWidth=1.3;
-  const hb=0.75+Math.sin(t*0.27+1.2)*0.24;
-  ctx.beginPath(); ctx.arc(x,y,r*0.86,hb,hb+0.30); ctx.stroke();
-  ctx.fillStyle=`rgba(255,255,255,${auto?.24:.34})`;
-  ctx.beginPath();
-  ctx.ellipse(x-r*.40+Math.sin(t*.5)*r*.05, y-r*.44+Math.cos(t*.42)*r*.04,
-              r*.085, r*.055, -0.6, 0, 7);
-  ctx.fill();
   // 中心那个看不见的指针，只留最小的一个记号
   ctx.strokeStyle=`rgba(${col},.42)`; ctx.lineWidth=1;
   ctx.beginPath();
@@ -1224,7 +1230,7 @@ function viewBounds(){ const w=cB._w,h=cB._h,z=B.cam.z;
 function itemSize(it){ return 46*(0.6+Math.min(it.att,50)/50*1.1); }
 
 function spawnItem(px,py,parent){
-  if(B.items.length>=CONFIG.maxLive){
+  if(B.items.length>=TUNE.maxLive){
     let idx=-1,worst=1e9;
     B.items.forEach((it,i)=>{ if(it.state==='live'&&it.att<worst){worst=it.att;idx=i;} });
     if(idx>=0)killItem(B.items[idx]);
@@ -1253,9 +1259,17 @@ function killItem(it){
 
 function updateBloom(dt){
   B.t+=dt; let drain=0;
-  B.spawnAcc+=dt*1000;
-  const interval=Math.max(180, CONFIG.spawnMs - B.t*2);
+  // 你人在花园时，信息流按比例降速 —— 回来不该是一堵墙
+  const onPage=activePage==='bloom';
+  B.spawnAcc+=dt*1000*(onPage?1:TUNE.bgSpawn);
+  // 只允许缓慢加速到 0.6 倍间隔，不再一路冲到地板
+  const interval=Math.max(TUNE.spawnMs*0.6, TUNE.spawnMs - B.t*1.2);
   while(B.spawnAcc>interval){ B.spawnAcc-=interval; spawnItem(); }
+  while(B.items.length>TUNE.maxLive){                 // 上限调小了要能立刻收缩
+    let idx=-1,worst=1e9;
+    B.items.forEach((it,i)=>{ if(it.state==='live'&&it.att<worst){worst=it.att;idx=i;} });
+    if(idx<0)break; killItem(B.items[idx]);
+  }
   // 谱系链：周期性长出带彩色连线的内容族
   B.chainAcc+=dt;
   if(B.chainAcc>3.4){ B.chainAcc=0;
@@ -1289,7 +1303,9 @@ function updateBloom(dt){
       const sx=(it.x-B.cam.x)*z+w/2, sy=(it.y-B.cam.y)*z+h/2;
       const d=Math.hypot(sx-GAZE.x, sy-GAZE.y);
       if(avail&&!B.drag&&d<gr){
-        const g=(1-d/gr)*26*dt; it.att+=g;
+        // 算法接管时只用极小的力度喂养 —— 托管不该替你把一屏都点成热门
+        const gain=TUNE.feedGain*(GAZE.mode==='visitor'?1:TUNE.autoGain);
+        const g=(1-d/gr)*gain*dt; it.att+=g;
         if(GAZE.mode==='visitor')drain+=g*.5;   // 算法的注视不消耗你的注意力
         S.energy+=g*.004;
       }
@@ -1331,6 +1347,15 @@ function updateBloom(dt){
   return drain;
 }
 
+/* 信息流重播：清空当前这一屏，重新起一小批 */
+function reseedBloom(){
+  B.items.length=0; B.links.length=0; B.specks.length=0;
+  B.sel=null; PIN.B=null; B.t=0; B.spawnAcc=0; B.chainAcc=0;
+  B.cam.x=R(-300,300); B.cam.y=R(-300,300); B.cam.z=1;
+  B.drift=R(0,7);
+  for(let i=0,n=RI(14,24);i<n;i++){ const it=spawnItem();
+    it.att=R(0,12); it.born=Date.now()-R(0,18000)|0; it.a=1; }
+}
 function renderBloom(){
   const ctx=xB,w=cB._w,h=cB._h,z=B.cam.z;
   ctx.save();
@@ -3090,13 +3115,22 @@ btnSet.onclick=e=>{ e.stopPropagation();
 document.addEventListener('pointerdown',e=>{ if(!$('setWrap').contains(e.target))closeSet(); });
 $('popReseed').onclick=()=>{ reseedGarden(); closeSet();
   toast(tt('花园已重播 —— 新的一园','the garden has been reseeded')); };
+$('popReseedB').onclick=()=>{ reseedBloom(); closeSet();
+  toast(tt('信息流已重播 —— 清空这一屏','the feed has been reseeded')); };
 $('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); buildThemeRows(); buildImgGrid(); syncBgLabel(); closeSet();
   toast(tt('语言：中文','Language: English')); };
 
 /* 生态参数滑杆：改的就是这件作品的生态法则，即时生效并记住 */
 function buildTuneRows(){
   const box=$('tuneRows'); box.innerHTML='';
-  TUNE_META.forEach(([key,label,min,max,step,fmt])=>{
+  let grp=null;
+  TUNE_META.forEach(([key,label,min,max,step,fmt,g])=>{
+    if(g&&g!==grp){ grp=g;
+      const sp=document.createElement('div'); sp.className='popSep';
+      sp.textContent = g==='bloom' ? tt('信息流 FEED','FEED')
+                     : g==='garden'? tt('花园 GARDEN','GARDEN')
+                     : tt('两页通用 BOTH','BOTH');
+      box.appendChild(sp); }
     const row=document.createElement('div'); row.className='tRow';
     const lb=document.createElement('label');
     const nm=document.createElement('span'); nm.textContent=tt(label[0],label[1]);
