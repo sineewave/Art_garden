@@ -6,10 +6,15 @@
 pip install pillow numpy          # build_assets.py 需要
 # 视频抽帧另需系统里有 ffmpeg（没有也能跑，视频退化为静帧）
 
-python3 tools/fetch_civitai.py    --target 700     # 2026 地层（含互动数据）
-python3 tools/fetch_diffusiondb.py --sample 300    # 2022 地层（对照组）
-python3 tools/build_assets.py                      # 烘成图集 + 生成 manifest.js
+python3 tools/fetch_civitai.py --probe             # ① 先探针：20 秒验证接口
+python3 tools/fetch_civitai.py    --target 700     # ② 2026 地层（含互动数据）
+python3 tools/fetch_diffusiondb.py --sample 300    # ③ 2022 地层（对照组）
+python3 tools/build_assets.py                      # ④ 烘成图集 + 生成 manifest.js
 ```
+
+> **第一步别跳过。** 本脚本是对着无法访问的官方文档、按已知 v1 结构写的，
+> 字段名可能对不上。`--probe` 只取 3 条并打印真实结构（含 `stats` 到底有没有数据），
+> 20 秒就能确认。别拿一小时的下载去赌。
 
 跑完刷新 `index.html` 即可。没跑之前页面用内置程序化纹样，一样能演示。
 

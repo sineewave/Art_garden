@@ -125,14 +125,61 @@ def norm(item):
     }
 
 
+def probe(api_key):
+    """开爬前先验证接口：只取 3 条，打印真实字段结构。
+
+    本脚本是对着无法访问的官方文档、按已知 v1 结构写的。跑这个 20 秒，
+    就能确认字段名对不对、stats 到底有没有数据 —— 别拿一小时的下载去赌。
+    """
+    url = f"{API}?{urllib.parse.urlencode({'limit':3,'sort':'Most Reactions','period':'Week','nsfw':'None'})}"
+    print(f"请求 {url}\n")
+    data = http_json(url, api_key)
+    if not data:
+        print("✗ 请求失败。检查网络 / 代理 / 是否需要 API key。")
+        return
+    print(f"顶层键：{list(data.keys())}")
+    md = data.get("metadata") or {}
+    print(f"metadata：{md}\n")
+    items = data.get("items") or []
+    if not items:
+        print("✗ items 为空 —— 参数可能不被接受，试试去掉 nsfw 或换 sort 值。")
+        return
+    it = items[0]
+    print(f"单条 item 的键：{sorted(it.keys())}\n")
+    for k in ("id", "url", "type", "width", "height", "nsfwLevel", "createdAt", "username"):
+        v = it.get(k)
+        print(f"  {k:12} = {str(v)[:88]}{'  ← 缺失!' if v is None else ''}")
+    st, me = it.get("stats"), it.get("meta")
+    print(f"\n  stats  = {json.dumps(st, ensure_ascii=False)[:200] if st else '空 / 缺失  ← 关键问题'}")
+    if me:
+        print(f"  meta 的键 = {sorted(me.keys())[:14]}")
+        for k in ("prompt", "Model", "steps", "sampler", "cfgScale"):
+            print(f"    meta.{k:10} = {str(me.get(k))[:70]}")
+    else:
+        print("  meta   = 空 / 缺失  ← 拿不到 prompt 与参数")
+
+    n_st = sum(1 for x in items if x.get("stats"))
+    n_me = sum(1 for x in items if x.get("meta"))
+    print(f"\n3 条样本中：有 stats 的 {n_st} 条，有 meta 的 {n_me} 条")
+    print("\n归一化后的记录（本脚本实际会存的东西）：")
+    print(json.dumps(norm(it), ensure_ascii=False, indent=2)[:900])
+    print("\n把以上输出发我，字段对不上我立刻改。没问题就直接开跑正式抓取。")
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--probe", action="store_true",
+                    help="只取 3 条并打印真实字段结构 —— 正式开爬前先跑这个")
     ap.add_argument("--target", type=int, default=700, help="目标条数")
     ap.add_argument("--api-key", default=os.environ.get("CIVITAI_API_KEY"))
     ap.add_argument("--width", type=int, default=512, help="下载宽度（越小越快）")
     ap.add_argument("--video-only", action="store_true")
     ap.add_argument("--sleep", type=float, default=0.7, help="每页之间的间隔秒")
     args = ap.parse_args()
+
+    if args.probe:
+        probe(args.api_key)
+        return
 
     os.makedirs(RAW, exist_ok=True)
     os.makedirs(os.path.dirname(META), exist_ok=True)
