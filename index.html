@@ -115,6 +115,47 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
   background:var(--ink);margin-top:-4px;border:0}
 .tRow input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--ink);border:0}
 .tRow.off label{opacity:.4}
+/* 背景主题选择 */
+#themeRows{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:3px 9px 7px}
+.thBtn{display:flex;align-items:center;gap:6px;font-family:ui-monospace,Menlo,monospace;font-size:9px;
+  letter-spacing:.6px;padding:6px 7px;border:1px solid var(--line-soft);border-radius:8px;
+  background:none;color:var(--ink);cursor:pointer;opacity:.62;text-align:left}
+.thBtn:hover{opacity:1}
+.thBtn.on{opacity:1;border-color:var(--ink)}
+.thBtn i{width:15px;height:15px;border-radius:4px;flex:0 0 auto;border:1px solid var(--line-soft);
+  display:inline-block;background-size:cover}
+
+/* ---------- 全屏观赏模式：只留画面 ---------- */
+body.show header,body.show footer,body.show .toolbar,body.show #depthHud{display:none}
+body.show #showExit{display:flex}
+#showExit{position:fixed;right:16px;top:16px;z-index:60;display:none;align-items:center;gap:7px;
+  font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:1.2px;
+  padding:7px 12px;border:1px solid var(--line-soft);border-radius:999px;
+  background:rgba(255,255,255,.72);color:var(--ink);cursor:pointer;opacity:.25;transition:opacity .3s}
+#showExit:hover{opacity:1}
+body.darkTh #showExit{background:rgba(20,26,30,.62)}
+
+/* ---------- 深色主题下的界面 ---------- */
+body.darkTh{--paper:#12161A;--panel:#1A2026;--ink:#E4EAE7;
+  --line:rgba(228,234,231,.34);--line-soft:rgba(228,234,231,.16)}
+body.darkTh .btn,body.darkTh .tab.on{background:rgba(255,255,255,.07)}
+body.darkTh .btn:hover{background:rgba(255,255,255,.13)}
+body.darkTh .meter,body.darkTh #depthHud .dRail{background:rgba(255,255,255,.08)}
+body.darkTh #grain{opacity:.16;mix-blend-mode:screen}
+body.darkTh #intro{background:rgba(18,22,26,.97)}
+body.darkTh #srcWrap{background:rgba(18,22,26,.92)}
+body.darkTh .toast{background:#E4EAE7;color:#12161A}
+body.darkTh #btnSet:hover,body.darkTh #btnSet.on{background:rgba(255,255,255,.1)}
+body.darkTh .popItem:hover{background:rgba(255,255,255,.09)}
+body.darkTh .tRow input[type=range]::-webkit-slider-runnable-track{background:rgba(228,234,231,.2)}
+body.darkTh .tRow input[type=range]::-moz-range-track{background:rgba(228,234,231,.2)}
+body.darkTh .tRow input[type=range]::-webkit-slider-thumb{background:var(--ink)}
+body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
+/* 档案卡：点击才开，带关闭键 */
+.cardX{position:absolute;right:8px;top:6px;border:0;background:none;color:var(--ink);
+  font-size:11px;line-height:1;opacity:.35;cursor:pointer;padding:4px 5px}
+.cardX:hover{opacity:.9}
+.card{pointer-events:auto}
 
 /* ---------- 数据来源 ---------- */
 #srcWrap{position:fixed;inset:0;background:rgba(242,243,241,.9);z-index:130;
@@ -185,6 +226,7 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
   <section class="page" id="pageBloom">
     <canvas class="stage" id="cBloom" aria-label="信息爆炸画布"></canvas>
     <div class="card" id="cardB">
+      <button class="cardX" data-card="cardB" aria-label="关闭 CLOSE">✕</button>
       <h4 id="cbTitle">OB-0000</h4>
       <div id="cbRows"></div>
     </div>
@@ -202,10 +244,12 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
       <div class="dRail"><i id="dCursor" style="top:0"></i></div>
     </div>
     <div class="card" id="cardG">
+      <button class="cardX" data-card="cardG" aria-label="关闭 CLOSE">✕</button>
       <h4 id="cgTitle">PL-0000</h4>
       <div id="cgRows"></div>
     </div>
     <div class="card" id="cardN">
+      <button class="cardX" data-card="cardN" aria-label="关闭 CLOSE">✕</button>
       <h4 id="cnTitle">NODE</h4>
       <div id="cnRows"></div>
     </div>
@@ -224,6 +268,11 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
     <div id="setPop">
       <button class="popItem" id="popReseed">↻ 重播花园 RESEED</button>
       <button class="popItem" id="popLang">Switch to English</button>
+      <button class="popItem" id="popShow">⛶ 全屏观赏 SHOW MODE</button>
+      <button class="popItem" id="popUpload">＋ 载入图片 IMAGES</button>
+      <input type="file" id="fileIn" accept="image/*" multiple hidden>
+      <div class="popSep" id="popThemeT">背景 BACKGROUND</div>
+      <div id="themeRows"></div>
       <button class="popItem" id="popSrc">◇ 数据来源 SOURCES</button>
       <div class="popSep" id="popTuneT">生态参数 ECOLOGY</div>
       <div id="tuneRows"></div>
@@ -250,6 +299,7 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
   <p id="srcIntro"></p>
   <div id="srcList"></div>
 </div></div>
+<button id="showExit">⛶ 退出全屏 EXIT</button>
 <div class="toastWrap" id="toasts"></div>
 <div id="grain"></div>
 
@@ -387,6 +437,10 @@ const UI_TXT={
   meterLabel:['注意力 ATTENTION','ATTENTION'],
   popReseed:['↻ 重播花园 RESEED','↻ RESEED GARDEN'],
   popReset:['↺ 恢复默认 RESET','↺ RESET DEFAULTS'],
+  popShow:['⛶ 全屏观赏 SHOW MODE','⛶ SHOW MODE'],
+  popUpload:['＋ 载入图片 IMAGES','＋ LOAD IMAGES'],
+  popThemeT:['背景 BACKGROUND','BACKGROUND'],
+  showExit:['⛶ 退出全屏 EXIT','⛶ EXIT'],
   popSrc:['◇ 数据来源 SOURCES','◇ DATA SOURCES'],
   popTuneT:['生态参数 ECOLOGY','ECOLOGY PARAMETERS'],
   popLang:['Switch to English','切换到中文'],
@@ -415,9 +469,106 @@ function setLang(l){ LANG=l; try{ localStorage.setItem('ag_lang',l); }catch(_){}
   applyLang(); }
 
 /* ============================================================
-   背景网纹 — 浅灰/浅灰蓝半调圆点，明亮底色上的一层安静颗粒
-   （无缝平铺：点径由整周期正弦波调制）
+   背景主题 THEME — 整套视觉的色彩令牌，设置里可换
+   ------------------------------------------------------------
+   每个主题都定义天空／土层／垄／网络／根的全套颜色，外加几个开关：
+   sun 有没有太阳、mono 是否全画面黑白、deco 额外的背景装置。
    ============================================================ */
+const THEMES={
+  paper:{ zh:'纸白', en:'PAPER', dark:false, sun:true, mono:false, deco:null,
+    paper:'#F2F3F1', sky:['#E4EDF3','#F1EFE4','#FAFAF6'],
+    dots:['rgba(122,140,158,.075)','rgba(132,134,130,.055)'],
+    cloud:'rgba(252,252,250,.92)', cloudSh:'rgba(165,180,192,.20)',
+    hills:[['rgba(127,163,91,.10)','rgba(127,163,91,.30)'],['rgba(191,163,126,.14)','rgba(160,130,96,.34)']],
+    field:['#E4E6D6','#DFDCC6','#D3CBAC'], contour:'rgba(140,146,112,.18)',
+    ridge:['#C9B48C','#C0A87E','#B79C6F','#AC8F60'],
+    ridgeHi:'rgba(255,252,240,.34)', ridgeDot:'rgba(122,98,62,.34)',
+    soil:['#C6A87E','#9C7E55','#5E4A31','#33291D','#1E1913','#141110'], soilBot:'#100E0D',
+    net:'126,206,186', netHot:'168,246,214',
+    root:['#6B5030','#3A2C1B','#7E6238','#4A3A26'] },
+
+  mono:{ zh:'黑白像素', en:'MONO PIXEL', dark:false, sun:false, mono:true, deco:'grid',
+    paper:'#F4F4F4', sky:['#EDEDED','#F1F1F1','#FAFAFA'],
+    dots:['rgba(20,20,20,.10)','rgba(20,20,20,.05)'],
+    cloud:'rgba(255,255,255,.96)', cloudSh:'rgba(20,20,20,.12)',
+    hills:[['rgba(20,20,20,.05)','rgba(20,20,20,.22)'],['rgba(20,20,20,.08)','rgba(20,20,20,.30)']],
+    field:['#E8E8E8','#E0E0E0','#D2D2D2'], contour:'rgba(20,20,20,.16)',
+    ridge:['#D2D2D2','#C6C6C6','#B8B8B8','#A9A9A9'],
+    ridgeHi:'rgba(255,255,255,.5)', ridgeDot:'rgba(20,20,20,.30)',
+    soil:['#CFCFCF','#A8A8A8','#6E6E6E','#3C3C3C','#242424','#161616'], soilBot:'#121212',
+    net:'150,150,150', netHot:'250,250,250',
+    root:['#3A3A3A','#1E1E1E','#555555','#2C2C2C'] },
+
+  pixelwood:{ zh:'像素林', en:'PIXEL WOOD', dark:false, sun:true, mono:false, deco:'trees',
+    paper:'#F1F4EE', sky:['#E2EEE6','#F0F2E4','#F8FAF4'],
+    dots:['rgba(120,150,124,.085)','rgba(140,146,132,.05)'],
+    cloud:'rgba(253,254,250,.94)', cloudSh:'rgba(150,178,156,.20)',
+    hills:[['rgba(110,150,104,.13)','rgba(110,150,104,.32)'],['rgba(150,170,120,.14)','rgba(120,140,90,.32)']],
+    field:['#E0E8D4','#D8DFC4','#CBD3AC'], contour:'rgba(120,140,96,.20)',
+    ridge:['#C5C39A','#BAB78C','#ADA97C','#9F9B6C'],
+    ridgeHi:'rgba(255,255,240,.36)', ridgeDot:'rgba(104,110,68,.32)',
+    soil:['#BFB584','#95905C','#5C5E36','#323522','#1D2016','#141610'], soilBot:'#101210',
+    net:'150,206,150', netHot:'196,250,196',
+    root:['#5E5A2E','#33301A','#726E38','#454226'] },
+
+  deep:{ zh:'深夜', en:'DEEP', dark:true, sun:false, mono:false, deco:null,
+    paper:'#12161A', sky:['#0E1418','#141C22','#1A2228'],
+    dots:['rgba(140,190,200,.07)','rgba(120,150,170,.05)'],
+    cloud:'rgba(40,54,62,.75)', cloudSh:'rgba(10,16,20,.5)',
+    hills:[['rgba(60,110,110,.16)','rgba(90,170,160,.30)'],['rgba(50,70,90,.22)','rgba(80,120,150,.30)']],
+    field:['#1C2A2A','#1A2524','#18201E'], contour:'rgba(120,200,190,.14)',
+    ridge:['#22302E','#1E2A29','#1A2523','#16201E'],
+    ridgeHi:'rgba(150,230,220,.10)', ridgeDot:'rgba(140,220,200,.16)',
+    soil:['#141E1E','#101A1A','#0D1616','#0A1212','#080F0F','#060C0C'], soilBot:'#050A0A',
+    net:'110,230,200', netHot:'190,255,230',
+    root:['#3E5A52','#20302C','#4E6E64','#2A3E38'] },
+
+  blueprint:{ zh:'图解蓝', en:'BLUEPRINT', dark:true, sun:false, mono:false, deco:'grid',
+    paper:'#0B1220', sky:['#080E1A','#0C1524','#111C30'],
+    dots:['rgba(120,180,230,.09)','rgba(90,140,200,.06)'],
+    cloud:'rgba(30,48,74,.6)', cloudSh:'rgba(6,12,22,.5)',
+    hills:[['rgba(60,110,180,.14)','rgba(120,190,255,.34)'],['rgba(40,80,140,.18)','rgba(100,160,230,.30)']],
+    field:['#122036','#101B2E','#0D1626'], contour:'rgba(130,200,255,.20)',
+    ridge:['#16243A','#132034','#111C2E','#0F1828'],
+    ridgeHi:'rgba(150,210,255,.12)', ridgeDot:'rgba(130,190,255,.20)',
+    soil:['#101B2C','#0D1624','#0B121D','#080E17','#060A12','#04070D'], soilBot:'#03060B',
+    net:'120,190,255', netHot:'200,235,255',
+    root:['#2C4666','#16233A','#3A5A80','#1E3048'] },
+
+  datafall:{ zh:'数据瀑布', en:'DATA FALL', dark:true, sun:false, mono:true, deco:'fall',
+    paper:'#0A0A0A', sky:['#080808','#0C0C0C','#111111'],
+    dots:['rgba(255,255,255,.06)','rgba(255,255,255,.03)'],
+    cloud:'rgba(48,48,48,.6)', cloudSh:'rgba(0,0,0,.5)',
+    hills:[['rgba(255,255,255,.04)','rgba(255,255,255,.18)'],['rgba(255,255,255,.06)','rgba(255,255,255,.24)']],
+    field:['#161616','#131313','#101010'], contour:'rgba(255,255,255,.14)',
+    ridge:['#1C1C1C','#181818','#141414','#101010'],
+    ridgeHi:'rgba(255,255,255,.12)', ridgeDot:'rgba(255,255,255,.20)',
+    soil:['#141414','#101010','#0D0D0D','#0A0A0A','#070707','#050505'], soilBot:'#040404',
+    net:'210,210,210', netHot:'255,255,255',
+    root:['#4A4A4A','#242424','#5E5E5E','#333333'] }
+};
+let THEME='paper';
+try{ THEME=localStorage.getItem('ag_theme')||'paper'; }catch(_){}
+if(!THEMES[THEME])THEME='paper';
+let TH=THEMES[THEME];
+function setTheme(k){
+  if(!THEMES[k])return;
+  THEME=k; TH=THEMES[k];
+  try{ localStorage.setItem('ag_theme',k); }catch(_){}
+  document.body.dataset.th=k;
+  document.body.classList.toggle('darkTh',!!TH.dark);
+  HALF=null; if(typeof xB!=='undefined'&&xB)xB._half=null; if(typeof xG!=='undefined'&&xG)xG._half=null;
+  if(typeof G!=='undefined')G.soilTex=null;      // 土层纹理按主题重建
+  if(typeof rebuildDeco==='function')rebuildDeco();
+}
+/* 黑白主题：花也一并去色（保留明暗层次） */
+function thc(c){
+  if(!TH.mono)return c;
+  const [r,g,b]=anyRgb(c), v=Math.round(r*.30+g*.59+b*.11);
+  return `rgb(${v},${v},${v})`;
+}
+
+/* ---- 背景网纹：无缝平铺的半调圆点（颜色由主题决定） ---- */
 let HALF=null;
 function halftoneFill(ctx,x,y,w,h){
   if(!HALF){
@@ -427,7 +578,8 @@ function halftoneFill(ctx,x,y,w,h){
       const w1=Math.sin((gx*3+gy2)*Math.PI*2/N), w2=Math.sin((gy2*2-gx)*Math.PI*2/N);
       const r=1.0+(w1+w2)*.52;
       if(r<=.45)continue;
-      c.fillStyle=((gx+gy2)%7<4)?'rgba(122,140,158,.075)':'rgba(132,134,130,.055)';
+      c.fillStyle=((gx+gy2)%7<4)?TH.dots[0]:TH.dots[1];
+      if(TH.deco==='grid'){ c.fillRect(gx*CS+CS/2-1,gy2*CS+CS/2-1,2,2); continue; }
       c.beginPath(); c.arc(gx*CS+CS/2,gy2*CS+CS/2,Math.min(2.4,r),0,7); c.fill();
     }
     HALF=t;
@@ -553,8 +705,43 @@ function ensureSheet(a){
   im.onerror=()=>{ sheetLoads--; };
   im.src=ASSETS.sheetDir+a.id+'.jpg';
 }
-/* 统一取图口：程序纹样 / 图集块 / 视频帧 三种来源同一个调用 */
+/* ============================================================
+   观众上传的图片 —— 设置里「＋ 载入图片」
+   ------------------------------------------------------------
+   上传的图会进入画作池：长成花心、随种子落地、也会从天上飘过。
+   仅存在于本次会话（不写入服务器、不落盘）。
+   ============================================================ */
+const USER_ART=[];
+function addUserImages(files){
+  let n=0;
+  Array.from(files||[]).forEach(f=>{
+    if(!/^image\//.test(f.type))return;
+    const url=URL.createObjectURL(f), im=new Image();
+    im.onload=()=>{ URL.revokeObjectURL(url); };
+    im.src=url;
+    USER_ART.push({user:true, img:im, real:false,
+      title:(f.name||'').replace(/\.[^.]+$/,'').slice(0,20)||'未命名',
+      palIdx:hashStr(f.name||('u'+USER_ART.length))%NBUCKET});
+    n++;
+  });
+  if(n&&typeof G!=='undefined'&&G.drifters&&!G.drifters.length)seedDrifters();
+  return n;
+}
+function seedDrifters(){
+  G.drifters=[];
+  for(let i=0;i<8;i++) G.drifters.push({i, fx:Math.random(), wy:-70-Math.random()*300,
+    s:18+Math.random()*22, sp:.005+Math.random()*.016, ph:Math.random()*7});
+}
+/* 统一取图口：程序纹样 / 上传图 / 图集块 / 视频帧，同一个调用 */
 function drawArt(ctx,art,dx,dy,dw,dh,active){
+  if(art&&art.user){
+    const im=art.img;
+    if(im&&im.naturalWidth){                     // 居中裁切成方形
+      const sw=im.naturalWidth, sh=im.naturalHeight, m=Math.min(sw,sh);
+      ctx.drawImage(im,(sw-m)/2,(sh-m)/2,m,m,dx,dy,dw,dh);
+    } else { ctx.fillStyle=TH.dark?'#2A2F33':'#DBD6C8'; ctx.fillRect(dx,dy,dw,dh); }
+    return;
+  }
   if(!art||!art.real){ if(art&&art.cv)ctx.drawImage(art.cv,dx,dy,dw,dh); return; }
   if(art.isVideo&&active){
     ensureSheet(art);
@@ -700,6 +887,12 @@ function artTitle(){ return pick(NAME_A)+pick(NAME_B); }
 /* 画作由物种决定风格与色板 → 同种花天然同一色系纹样；
    有真实素材时改从图集取，物种由生成模型决定（结构承载真实变量）。 */
 function makeArt(styleId, palIdx){
+  // 观众上传的图优先进场 —— 这座花园长的是你给它的东西
+  if(USER_ART.length&&Math.random()<0.72){
+    const pool=USER_ART.filter(a2=>palIdx===undefined||palBucket(a2.palIdx)===palBucket(palIdx));
+    const a2=(pool.length?pool:USER_ART)[Math.floor(Math.random()*(pool.length||USER_ART.length))];
+    return Object.assign({},a2,{palIdx:(palIdx!==undefined?palIdx:a2.palIdx)});
+  }
   if(ASSET_ALL.length){
     const bi2=palIdx!==undefined?palBucket(palIdx):undefined;
     const bucket=(bi2!==undefined&&ASSET_BUCKET[bi2]&&ASSET_BUCKET[bi2].length)
@@ -949,13 +1142,13 @@ function updateBloom(dt){
 function renderBloom(){
   const ctx=xB,w=cB._w,h=cB._h,z=B.cam.z;
   ctx.save();
-  ctx.fillStyle=PAPER; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle=TH.paper; ctx.fillRect(0,0,w,h);
   halftoneFill(ctx,0,0,w,h);
   ctx.translate(w/2,h/2); ctx.scale(z,z); ctx.translate(-B.cam.x,-B.cam.y);
   const v=viewBounds();
 
   ctx.lineWidth=1.1/z; ctx.globalAlpha=.42;
-  B.blobs.forEach(b=>{ ctx.strokeStyle=b.color; ctx.beginPath();
+  B.blobs.forEach(b=>{ ctx.strokeStyle=thc(b.color); ctx.beginPath();
     const P=b.pts,n=P.length;
     ctx.moveTo((P[0].x+P[n-1].x)/2,(P[0].y+P[n-1].y)/2);
     for(let i=0;i<n;i++){ const p=P[i],q=P[(i+1)%n];
@@ -964,7 +1157,7 @@ function renderBloom(){
   ctx.globalAlpha=1;
 
   if(z>0.5){
-    ctx.fillStyle='rgba(38,33,26,.32)';
+    ctx.fillStyle=TH.dark?'rgba(226,232,230,.28)':'rgba(38,33,26,.32)';
     const off=Math.floor(B.t*2.6);
     B.ribbons.forEach(rb=>{
       if(rb.maxX<v.x0||rb.minX>v.x1||rb.maxY<v.y0||rb.minY>v.y1)return;
@@ -975,7 +1168,7 @@ function renderBloom(){
     });
   }
 
-  ctx.fillStyle='#948B7C';
+  ctx.fillStyle=TH.dark?'#4A5258':'#948B7C';
   B.specks.forEach(s=>{ if(s.x<v.x0||s.x>v.x1||s.y<v.y0||s.y>v.y1)return;
     ctx.fillRect(s.x,s.y,2.4,2.4); });
 
@@ -983,7 +1176,7 @@ function renderBloom(){
   B.links.forEach(l=>{
     ctx.globalAlpha=.7; ctx.strokeStyle=l.color;
     ctx.beginPath(); ctx.moveTo(l.x1,l.y1); ctx.lineTo(l.x2,l.y2); ctx.stroke();
-    if(l.lab){ ctx.globalAlpha=.55; ctx.fillStyle=INK;
+    if(l.lab){ ctx.globalAlpha=.55; ctx.fillStyle=TH.dark?'#C9D2CE':INK;
       ctx.font=`${9/z}px ui-monospace,Menlo,monospace`;
       const d=new Date(l.born);
       ctx.fillText(`(${d.getMonth()+1}.${d.getDate()})`,(l.x1+l.x2)/2+4/z,(l.y1+l.y2)/2-4/z); }
@@ -1001,13 +1194,13 @@ function renderBloom(){
     ctx.globalAlpha=alpha*(seedy?.78:1);
     // 圆角贴纸：软投影 + 白色细边，不再用深色描边框
     const rr2=s*.14;
-    if(it.type.id==='multi'){ ctx.fillStyle='rgba(46,45,40,.09)';
+    if(it.type.id==='multi'){ ctx.fillStyle=TH.dark?'rgba(0,0,0,.26)':'rgba(46,45,40,.09)';
       roundRect(ctx,ix-s/2+6/z,iy-s/2+7/z,s,s,rr2); ctx.fill(); }
-    ctx.fillStyle='rgba(46,45,40,.13)';
+    ctx.fillStyle=TH.dark?'rgba(0,0,0,.38)':'rgba(46,45,40,.13)';
     roundRect(ctx,ix-s/2+2.6/z,iy-s/2+3.2/z,s,s,rr2); ctx.fill();
     ctx.save(); roundRect(ctx,ix-s/2,iy-s/2,s,s,rr2); ctx.clip();
     ctx.imageSmoothingEnabled=!seedy;
-    drawArt(ctx, it.art, ix-s/2, iy-s/2, s, s, it===B.sel||it.att>12);
+    drawArt(ctx, it.art, ix-s/2, iy-s/2, s, s, it===B.sel||it===PIN.B||it.att>12);
     ctx.imageSmoothingEnabled=true;
     ctx.restore();
     ctx.lineWidth=Math.max(.9/z,s*.014); ctx.strokeStyle='rgba(255,255,255,.75)';
@@ -1023,7 +1216,7 @@ function renderBloom(){
     if(it.ring>0.03){ ctx.globalAlpha=alpha*it.ring*.85;
       ctx.strokeStyle=it.type.color; ctx.lineWidth=1.6/z;
       wobble(ctx,ix,iy,s/2+9+it.ring*4,it.seed,2.4); ctx.stroke(); }
-    if(it.att>19){ ctx.globalAlpha=alpha*.75; ctx.fillStyle=INK;
+    if(it.att>19){ ctx.globalAlpha=alpha*.75; ctx.fillStyle=TH.dark?'#D6DDD9':INK;
       ctx.font=`${9.5/z}px ui-monospace,Menlo,monospace`; ctx.textAlign='center';
       ctx.fillText(it.art.title, ix, iy+s/2+13/z); ctx.textAlign='left'; }
     if(it.state==='ascend'){ ctx.globalAlpha=(1-it.ascT)*.75;
@@ -1046,7 +1239,7 @@ function energyRow(t){
 }
 const co2g   = wh => wh*DATA.gridG.v/1000;         // Wh → g CO₂e
 const waterMl= wh => wh/DATA.imgWh.mid*(500/((DATA.water.lo+DATA.water.hi)/2));
-function refreshCardB(){ const it=B.sel; if(!it)return;
+function refreshCardB(){ const it=PIN.B; if(!it)return;
   $('cbTitle').textContent=it.id+tt(' · 生成对象档案',' · OBJECT FILE');
   const stZh=it.state==='ascend'?tt('迁移中 → 花园','migrating → garden')
     :(it.state==='fading'?tt('褪色中','fading'):tt('存活','alive'));
@@ -1138,7 +1331,7 @@ const G={
   parts:{sparks:[],petals:[],motes:[],leaves:[]},
   net:[], edges:[], outEdges:[], colony:{},
   trends:{}, trendAcc:0, sowAcc:0, metaAcc:0, powAcc:0,
-  sel:null, selNode:null, hoverNode:null, symbols:[], clouds:[], flora:[],
+  sel:null, selNode:null, hoverNode:null, symbols:[], clouds:[], flora:[], deco:[], drifters:[],
   soilTex:null, soilW:0
 };
 
@@ -1200,13 +1393,48 @@ function samplePath(startI){
   }
   return path;
 }
+/* ---- 天上飞过的小像素物件：一格一格画出来的迷你精灵 ---- */
+const SKY_SPR=[
+  ['..X..','..X..','XXXXX','..X..','.XXX.'],   // 纸飞机
+  ['X...X','.X.X.','..X..','.....','.....'],   // 飞鸟
+  ['..X..','..X..','XXXXX','..X..','..X..'],   // 十字星
+  ['X.X.X','.XXX.','XXXXX','.XXX.','X.X.X'],   // 卫星
+  ['.XXX.','XXXXX','.XXX.','.....','.....'],   // 小云
+  ['X....','XX...','XXX..','XXXX.','XX.XX'],   // 光标
+  ['..X..','.XXX.','XXXXX','.XXX.','..X..'],   // 菱形
+  ['XXXXX','X...X','XXXXX','.....','.....'],   // 进度条
+  ['..X..','.XXX.','.XXX.','..X..','.....'],   // 种子
+  ['XX..X','..XX.','XX..X','.X.XX','X..X.'],   // 故障噪点
+  ['.X.X.','XXXXX','.XXX.','..X..','.....'],   // 蝶
+  ['X.X.X','.X.X.','X.X.X','.X.X.','X.X.X']    // 网点
+];
 (function initSky(){
   const rnd=sRand(20260808);
-  const cols=['#D96C4A','#5D8FB8','#D9A23F','#D97E9C','#7FA35B','#4FA096'];
-  for(let i=0;i<24;i++) G.symbols.push({fx:rnd(), wy:-70-rnd()*330,
-    kind:Math.floor(rnd()*4), c:cols[Math.floor(rnd()*cols.length)], s:4+rnd()*5, sp:.006+rnd()*.02, ph:rnd()*7});
+  const cols=['#D96C4A','#5D8FB8','#D9A23F','#D97E9C','#7FA35B','#4FA096','#8F7BB5','#3FA3C4'];
+  for(let i=0;i<52;i++) G.symbols.push({fx:rnd(), wy:-40-rnd()*430,
+    kind:Math.floor(rnd()*SKY_SPR.length), c:cols[Math.floor(rnd()*cols.length)],
+    px:1.2+rnd()*2.2,                       // 每格几像素
+    sp:.004+rnd()*.028,                     // 飘移速度（决定视差）
+    ph:rnd()*7, bob:2+rnd()*5});
   for(let i=0;i<4;i++) G.clouds.push({fx:rnd(), wy:-150-rnd()*220, cw:120+rnd()*130, sp:.003+rnd()*.007});
 })();
+/* 主题装置：像素林 / 数据瀑布 / 网格，随主题重建 */
+function rebuildDeco(){
+  G.deco=[];
+  const rnd=sRand(778811);
+  if(TH.deco==='trees'){
+    // 地平线上的一排像素树：远近两层，越远越小越淡
+    for(let i=0;i<34;i++){ const far=rnd()<.45;
+      G.deco.push({fx:rnd(), wy:(far?-150:-128)-rnd()*26,
+        h:far?4+Math.floor(rnd()*3):6+Math.floor(rnd()*4),
+        px:far?2.2+rnd()*1.2:3.4+rnd()*2.2,
+        f:far?.20:.34, a:far?.24:.40}); }
+  } else if(TH.deco==='fall'){
+    for(let i=0;i<130;i++) G.deco.push({fx:rnd(), wy:-60-rnd()*520, len:16+rnd()*90,
+      sp:16+rnd()*80, px:1.4+rnd()*2.0, a:.12+rnd()*.34});
+  }
+}
+rebuildDeco();
 /* ---- 辅助植物：没有图片的小草 / 像素小花 / 卷须藤 / 芽苗 ——
    纯装饰的底层植被，让花园不只由"内容植株"构成 ---- */
 function buildFlora(){
@@ -1725,7 +1953,7 @@ function drawMount(ctx,p,size,fade,art){
   roundRect(ctx,-s/2,-s/2,s,s,r); ctx.clip();
   if(fade>0)ctx.filter=`saturate(${(1-fade*.85).toFixed(2)}) brightness(${(1-fade*.14).toFixed(2)})`;
   ctx.imageSmoothingEnabled=!!art.real;
-  drawArt(ctx,art,-s/2,-s/2,s,s, G.sel===p||p.att>20);
+  drawArt(ctx,art,-s/2,-s/2,s,s, G.sel===p||PIN.G===p||p.att>20);
   ctx.imageSmoothingEnabled=true;
   ctx.restore();
   ctx.lineWidth=Math.max(1,s*.022); ctx.strokeStyle='rgba(255,255,255,.85)';
@@ -1748,9 +1976,9 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
   const sp=p.sp, f=p.grayV*.9+p.wilt*.35;
   // 同种之间略作差异：色相旋转 + 明度微调 —— 一片同种不该像复制粘贴
   const hue=(hueOv!==undefined?hueOv:(p.hueJit||0)), lit=p.litJit||0;
-  const c0=dim(shiftHue(sp.c0,hue,lit),f);
-  const c1=dim(shiftHue(sp.c1,hue,lit),f);
-  const c2=dim(shiftHue(sp.c2,hue*.6,lit*.5),f*.6);
+  const c0=thc(dim(shiftHue(sp.c0,hue,lit),f));
+  const c1=thc(dim(shiftHue(sp.c1,hue,lit),f));
+  const c2=thc(dim(shiftHue(sp.c2,hue*.6,lit*.5),f*.6));
   const sh0=shade(c0,.30), sh1=shade(c1,.26);
   const t=easeOut(open), R2=hd*t;
   if(R2<3)return;
@@ -2053,7 +2281,7 @@ function drawPlant(ctx,p){
     ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-ss*.3); ctx.stroke();
     return;
   }
-  const green=dim(mixC('#7CA05E','#9A8055',p.wilt),p.grayV*.9);
+  const green=thc(dim(mixC('#7CA05E','#9A8055',p.wilt),p.grayV*.9));
   // 茎
   const segs=14;
   ctx.lineCap='round'; ctx.strokeStyle=green;
@@ -2073,7 +2301,7 @@ function drawPlant(ctx,p){
     const path=()=>{ ctx.beginPath(); ctx.moveTo(0,0);
       ctx.quadraticCurveTo(d*L*.5,-W, d*L,0);
       ctx.quadraticCurveTo(d*L*.5, W, 0,0); ctx.closePath(); };
-    const lc=dim(i%2?'#8FB06B':'#7CA05E',f);
+    const lc=thc(dim(i%2?'#8FB06B':'#7CA05E',f));
     flat(ctx,path,lc,shade(lc,.25),d*.8,1.4);
     ctx.strokeStyle=tint(lc,.4); ctx.lineWidth=.9;
     ctx.beginPath(); ctx.moveTo(d*2,0); ctx.lineTo(d*L*.82,0); ctx.stroke();
@@ -2139,8 +2367,8 @@ function drawButterfly(ctx,f,y){
       ctx.bezierCurveTo(s*.5,-s*1.15, s*1.5,-s*.8, s*1.25,-s*.05);
       ctx.bezierCurveTo(s*1.42,s*.6, s*.6,s*.8, 1,s*.28);
       ctx.closePath(); };
-    flat(ctx,path,sp.c0,shade(sp.c0,.28),.8,1.2);
-    ctx.fillStyle=sp.c1; ctx.fillRect(s*.68,-s*.5,s*.34,s*.34);
+    flat(ctx,path,thc(sp.c0),thc(shade(sp.c0,.28)),.8,1.2);
+    ctx.fillStyle=thc(sp.c1); ctx.fillRect(s*.68,-s*.5,s*.34,s*.34);
     ctx.fillStyle=tint(sp.c0,.45); ctx.fillRect(s*.4,s*.1,s*.26,s*.26);
     ctx.restore();
   });
@@ -2157,8 +2385,9 @@ function buildSoilTex(){
   const w=Math.max(320,Math.round(cG._w)), h=UG.bottom-UG.top;
   const c=document.createElement('canvas'); c.width=w; c.height=h;
   const ctx=c.getContext('2d'); const rnd=sRand(4242);
-  const bands=[['#C6A87E',UG.top],['#9C7E55',UG.layers[1].y],['#5E4A31',UG.layers[2].y],
-               ['#33291D',UG.layers[3].y],['#1E1913',UG.layers[4].y],['#141110',UG.bottom]];
+  const B2=TH.soil;
+  const bands=[[B2[0],UG.top],[B2[1],UG.layers[1].y],[B2[2],UG.layers[2].y],
+               [B2[3],UG.layers[3].y],[B2[4],UG.layers[4].y],[B2[5],UG.bottom]];
   for(let i=0;i<bands.length-1;i++){
     const y0=bands[i][1]-UG.top, y1=bands[i+1][1]-UG.top;
     const g=ctx.createLinearGradient(0,y0,0,y1);
@@ -2192,14 +2421,14 @@ function drawNode(ctx,nd,w){
   if(nd.kind==='capture'){    // 采集端口：一枚小接头
     ctx.fillStyle=live>.2?'#4E6B5A':'#2C3830';
     ctx.fillRect(x-W/2,y-H/2,W,H);
-    ctx.strokeStyle=live>.2?'rgba(150,235,200,.95)':'rgba(190,215,190,.35)';
+    ctx.strokeStyle=live>.2?`rgba(${TH.netHot},.95)`:`rgba(${TH.net},.45)`;
     ctx.lineWidth=1; ctx.strokeRect(x-W/2,y-H/2,W,H);
-    ctx.fillStyle=live>.2?'#9DF0C6':hexA('#7FA35B',.55);
+    ctx.fillStyle=live>.2?`rgb(${TH.netHot})`:`rgba(${TH.net},.7)`;
     ctx.fillRect(x-1.6,y-H/2-3,3.2,3);
     return;
   }
   ctx.fillStyle='#241E16'; ctx.fillRect(x-W/2,y-H/2,W,H);
-  ctx.strokeStyle=live>.2?'rgba(150,235,200,.9)':'rgba(206,190,158,.42)';
+  ctx.strokeStyle=live>.2?`rgba(${TH.netHot},.9)`:'rgba(206,190,158,.42)';
   ctx.lineWidth=live>.2?1.7:1.1; ctx.strokeRect(x-W/2,y-H/2,W,H);
   if(nd.kind==='rank'||nd.kind==='gpu'){
     const cols=nd.kind==='gpu'?6:5, rws=3;
@@ -2264,11 +2493,11 @@ function renderGarden(){
   const skyTop=gyP(-620,.12), gnd=gy(20);
   const fieldTop=gy(ROWS[0].wy-34);        // 地平线：最后一排土垄之上
   const sky=ctx.createLinearGradient(0,Math.min(skyTop,0),0,Math.max(fieldTop,1));
-  sky.addColorStop(0,mixHex('#E4EDF3','#F1EFE4',day));
-  sky.addColorStop(1,'#FAFAF6');
+  sky.addColorStop(0,mixHex(TH.sky[0],TH.sky[1],day));
+  sky.addColorStop(1,TH.sky[2]);
   ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
   if(fieldTop>0) halftoneFill(ctx,0,0,w,Math.min(fieldTop,h));
-  { // 太阳：平涂圆盘 + 半调点环
+  if(TH.sun){ // 太阳：平涂圆盘 + 半调点环
     const sx=w*.78, sy=gyP(-380,.10);
     if(sy>-120&&sy<h+120){
       ctx.fillStyle='rgba(239,203,132,.5)'; ctx.beginPath(); ctx.arc(sx,sy,52,0,7); ctx.fill();
@@ -2280,17 +2509,17 @@ function renderGarden(){
   }
   G.clouds.forEach(c=>{ const x=((c.fx+G.t*c.sp)%1.25-.12)*w, y=gyP(c.wy,.16);
     if(y<-60||y>h+60)return;
-    ctx.fillStyle='rgba(165,180,192,.20)';
+    ctx.fillStyle=TH.cloudSh;
     ctx.beginPath(); ctx.ellipse(x+4,y+6,c.cw*.5,15,0,0,7);
     ctx.ellipse(x-c.cw*.24+4,y+13,c.cw*.29,11,0,0,7);
     ctx.ellipse(x+c.cw*.26+4,y+12,c.cw*.31,12,0,0,7); ctx.fill();
-    ctx.fillStyle='rgba(252,252,250,.92)';
+    ctx.fillStyle=TH.cloud;
     ctx.beginPath(); ctx.ellipse(x,y,c.cw*.5,15,0,0,7);
     ctx.ellipse(x-c.cw*.24,y+7,c.cw*.29,11,0,0,7);
     ctx.ellipse(x+c.cw*.26,y+6,c.cw*.31,12,0,0,7); ctx.fill(); });
   // 远山两重（等高线）
-  [[-58,.22,26,'rgba(127,163,91,.10)','rgba(127,163,91,.30)',1],
-   [-26,.40,17,'rgba(191,163,126,.14)','rgba(160,130,96,.34)',2]].forEach(hl=>{
+  [[-58,.22,26,TH.hills[0][0],TH.hills[0][1],1],
+   [-26,.40,17,TH.hills[1][0],TH.hills[1][1],2]].forEach(hl=>{
     const [bw,f,amp,fill,line,sd]=hl;
     ctx.beginPath();
     for(let x=0;x<=w;x+=20){ const yy=gyP(bw+Math.sin(x*.011+sd)*amp+Math.sin(x*.029+sd*2.3)*amp*.4,f);
@@ -2298,17 +2527,65 @@ function renderGarden(){
     ctx.strokeStyle=line; ctx.lineWidth=1.2; ctx.stroke();
     ctx.lineTo(w,gyP(bw+400,f)); ctx.lineTo(0,gyP(bw+400,f)); ctx.closePath();
     ctx.fillStyle=fill; ctx.fill(); });
-  // 漂浮符号
+  // 主题装置：像素林（远景剪影）／数据瀑布（下落的字符流）
+  if(TH.deco==='trees'){
+    G.deco.forEach(t2=>{
+      const x=Math.round(t2.fx*w), base=gyP(t2.wy,t2.f), px=t2.px;
+      if(base<-60||base>h+60)return;
+      ctx.globalAlpha=t2.a;
+      ctx.fillStyle=thc('#5E7E4E');
+      for(let r=0;r<t2.h;r++){                       // 一格一格垒出的塔形树冠
+        const half=Math.max(0,Math.round((t2.h-r-1)*.75));
+        for(let c2=-half;c2<=half;c2++){
+          if(r===t2.h-1&&Math.abs(c2)>0)continue;
+          ctx.fillRect(x+c2*px, base-(r+2.4)*px, px-.35, px-.35); }
+      }
+      ctx.fillStyle=thc('#6B5236');
+      ctx.fillRect(x-px*.5, base-px*2.4, px, px*2.4);
+      ctx.globalAlpha=1;
+    });
+  } else if(TH.deco==='fall'){
+    G.deco.forEach(d2=>{
+      const x=Math.round(d2.fx*w/d2.px)*d2.px;
+      const y0=gyP(d2.wy+((G.t*d2.sp)%620),.5);
+      if(y0>h+40||y0+d2.len<-40)return;
+      for(let k=0;k<d2.len;k+=d2.px*1.35){
+        const a=Math.min(.9,d2.a*1.9*(1-k/d2.len));
+        ctx.fillStyle=`rgba(255,255,255,${a.toFixed(3)})`;
+        if((k*7+d2.fx*100|0)%4) ctx.fillRect(x,y0+k,d2.px,d2.px*1.25);
+      }
+      ctx.fillStyle='rgba(255,255,255,.95)';           // 流的头部最亮
+      ctx.fillRect(x,y0+d2.len,d2.px,d2.px*1.8);
+    });
+  }
+  // 漂浮的小像素精灵：一格一格画，速度不同形成视差
   G.symbols.forEach(s=>{
-    const x=((s.fx+G.t*s.sp)%1)*w, y=gyP(s.wy,.5)+Math.sin(G.t*.5+s.ph)*5;
-    if(y<-20||y>h+20)return;
-    ctx.globalAlpha=.4; ctx.fillStyle=s.c; ctx.strokeStyle=s.c;
-    if(s.kind===0){ ctx.fillRect(x-s.s/2,y-1.4,s.s,2.8); ctx.fillRect(x-1.4,y-s.s/2,2.8,s.s); }
-    else if(s.kind===1){ for(let i=0;i<3;i++)for(let j=0;j<3;j++)ctx.fillRect(x+i*4,y+j*4,2,2); }
-    else if(s.kind===2){ ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(x,y,s.s*.6,0,7); ctx.stroke(); }
-    else ctx.fillRect(x-2,y-2,4,4);
+    const x=((s.fx+G.t*s.sp)%1.1-.05)*w, y=gyP(s.wy,.5)+Math.sin(G.t*.5+s.ph)*s.bob;
+    if(y<-24||y>h+24)return;
+    const spr=SKY_SPR[s.kind%SKY_SPR.length], px=s.px;
+    ctx.globalAlpha=.5; ctx.fillStyle=thc(s.c);
+    for(let r=0;r<spr.length;r++)for(let c2=0;c2<spr[r].length;c2++)
+      if(spr[r][c2]==='X') ctx.fillRect(x+c2*px, y+r*px, px, px);
+    ctx.globalAlpha=1;
   });
-  ctx.globalAlpha=1;
+  // 观众上传的图片：也让它们从左往右飘过去
+  if(USER_ART.length){
+    G.drifters.forEach(d2=>{
+      const a=USER_ART[d2.i%USER_ART.length];
+      const x=((d2.fx+G.t*d2.sp)%1.15-.08)*w, y=gyP(d2.wy,.42)+Math.sin(G.t*.6+d2.ph)*4;
+      if(y<-40||y>h+40||!a)return;
+      const ss=d2.s;
+      ctx.save(); ctx.translate(x,y); ctx.rotate(Math.sin(G.t*.4+d2.ph)*.05);
+      ctx.globalAlpha=.9;
+      ctx.fillStyle=TH.dark?'rgba(0,0,0,.32)':'rgba(46,45,40,.14)';
+      roundRect(ctx,-ss/2+1.4,-ss/2+2,ss,ss,ss*.2); ctx.fill();
+      ctx.save(); roundRect(ctx,-ss/2,-ss/2,ss,ss,ss*.2); ctx.clip();
+      drawArt(ctx,a,-ss/2,-ss/2,ss,ss,false); ctx.restore();
+      ctx.lineWidth=1; ctx.strokeStyle='rgba(255,255,255,.8)';
+      roundRect(ctx,-ss/2,-ss/2,ss,ss,ss*.2); ctx.stroke();
+      ctx.restore(); ctx.globalAlpha=1;
+    });
+  }
   // 潮流光柱
   Object.entries(G.trends).forEach(([si,tr])=>{ if(tr.glow<.02)return;
     const cx=tr.cx*w, bw=210+70*tr.glow;
@@ -2324,10 +2601,10 @@ function renderGarden(){
     const fb=gy(UG.top);
     if(fb>0&&fieldTop<h){
       const fg=ctx.createLinearGradient(0,fieldTop,0,fb);
-      fg.addColorStop(0,'#E4E6D6'); fg.addColorStop(.5,'#DFDCC6'); fg.addColorStop(1,'#D3CBAC');
+      fg.addColorStop(0,TH.field[0]); fg.addColorStop(.5,TH.field[1]); fg.addColorStop(1,TH.field[2]);
       ctx.fillStyle=fg; ctx.fillRect(0,fieldTop,w,fb-fieldTop);
       // 等高线：一层安静的地形线（参考等高线插画）
-      ctx.strokeStyle='rgba(140,146,112,.18)'; ctx.lineWidth=1;
+      ctx.strokeStyle=TH.contour; ctx.lineWidth=1;
       for(let k=0;k<5;k++){
         const yy=fieldTop+(fb-fieldTop)*(.12+k*.19);
         ctx.beginPath();
@@ -2343,7 +2620,7 @@ function renderGarden(){
   const ugTop=gy(UG.top);
   if(ugTop<h){
     ctx.drawImage(G.soilTex,0,ugTop,w,UG.bottom-UG.top);
-    ctx.fillStyle='#100E0D'; ctx.fillRect(0,gy(UG.bottom),w,Math.max(0,h-gy(UG.bottom)));
+    ctx.fillStyle=TH.soilBot; ctx.fillRect(0,gy(UG.bottom),w,Math.max(0,h-gy(UG.bottom)));
     // 剖面制图网格：细点线 + 深度刻度（只保留数字，不再印说明文字）
     ctx.save(); ctx.strokeStyle='rgba(244,238,222,.13)'; ctx.lineWidth=1;
     ctx.setLineDash([1,7]);
@@ -2362,10 +2639,10 @@ function renderGarden(){
       ctx.lineCap='round';
       p.rootSegs.forEach(sg=>{
         if(sg.main){   // 主根：深褐，越往下越暗，压在浅色土层上才看得见
-          ctx.strokeStyle=mixHex('#6B5030','#3A2C1B',sg.t);
+          ctx.strokeStyle=mixHex(TH.root[0],TH.root[1],sg.t);
           ctx.lineWidth=Math.max(1.8,(7.4-sg.t*3.9)*p.rs*(0.8+(p.vig||1)*0.2));
         } else {
-          ctx.strokeStyle=mixHex('#7E6238','#4A3A26',Math.min(1,sg.d/5));
+          ctx.strokeStyle=mixHex(TH.root[2],TH.root[3],Math.min(1,sg.d/5));
           ctx.lineWidth=Math.max(.8,(3.4-sg.d*.52)*p.rs);
         }
         ctx.beginPath(); ctx.moveTo(sg.x,gy(sg.y)); ctx.lineTo(sg.x2,gy(sg.y2)); ctx.stroke(); });
@@ -2379,7 +2656,7 @@ function renderGarden(){
       if(port&&p.rootTip){
         const tipX=x+p.rootTip[0], tipY=gy(p.rootTip[1]);
         const px2=port.fx*w, py2=gy(port.y)-port.h/2;
-        ctx.strokeStyle=G.sel===p?'rgba(168,246,214,.95)':'rgba(150,210,180,.5)';
+        ctx.strokeStyle=G.sel===p?`rgba(${TH.netHot},.95)`:`rgba(${TH.net},.6)`;
         ctx.lineWidth=G.sel===p?2.2:1.4;
         ctx.beginPath(); ctx.moveTo(tipX,tipY);
         ctx.bezierCurveTo(tipX,tipY+(py2-tipY)*.55, px2,py2-(py2-tipY)*.55, px2,py2); ctx.stroke();
@@ -2395,8 +2672,8 @@ function renderGarden(){
       const y0=ay+a.h/2, y1=by-b.h/2, d=(y1-y0)*.55;
       const flow=Math.min(1,(a.load+b.load)*.5+e.hot*.6);
       ctx.strokeStyle=e.hot>.05
-        ? `rgba(168,246,214,${(.45+.5*e.hot).toFixed(3)})`
-        : `rgba(126,206,186,${(.17+.40*e.w*flow).toFixed(3)})`;
+        ? `rgba(${TH.netHot},${(.45+.5*e.hot).toFixed(3)})`
+        : `rgba(${TH.net},${(.17+.40*e.w*flow).toFixed(3)})`;
       ctx.lineWidth=Math.max(.8,(e.hot>.05?2.6:1.7)*e.w);
       ctx.beginPath(); ctx.moveTo(ax,y0);
       ctx.bezierCurveTo(ax,y0+d, bx,y1-d, bx,y1); ctx.stroke();
@@ -2405,7 +2682,7 @@ function renderGarden(){
         const t2=((G.t*.16+e.ph)%1), u=1-t2;
         const qx=u*u*u*ax+3*u*u*t2*ax+3*u*t2*t2*bx+t2*t2*t2*bx;
         const qy=u*u*u*y0+3*u*u*t2*(y0+d)+3*u*t2*t2*(y1-d)+t2*t2*t2*y1;
-        ctx.fillStyle=`rgba(180,250,220,${(.34+.5*e.hot).toFixed(3)})`;
+        ctx.fillStyle=`rgba(${TH.netHot},${(.34+.5*e.hot).toFixed(3)})`;
         ctx.fillRect(qx-1.4,qy-1.4,2.8,2.8);
       }
     });
@@ -2448,16 +2725,16 @@ function renderGarden(){
     const y=gy(rw.wy), th=[7,9,12,20][i];
     const und=x=>Math.sin(x*.0055+i*1.7)*3.2+Math.sin(x*.017+i)*1.5;
     ctx.globalAlpha=[.86,.92,.97,1][i];
-    ctx.fillStyle=['#C9B48C','#C0A87E','#B79C6F','#AC8F60'][i];
+    ctx.fillStyle=TH.ridge[i];
     ctx.beginPath(); ctx.moveTo(0,y+und(0));
     for(let x=0;x<=w;x+=16)ctx.lineTo(x,y+und(x));
     ctx.lineTo(w,y+th); ctx.lineTo(0,y+th); ctx.closePath(); ctx.fill();
     // 垄脊高光：一道浅色带，让土垄有厚度
-    ctx.fillStyle='rgba(255,252,240,.34)';
+    ctx.fillStyle=TH.ridgeHi;
     ctx.beginPath(); ctx.moveTo(0,y+und(0));
     for(let x=0;x<=w;x+=16)ctx.lineTo(x,y+und(x));
     for(let x=w;x>=0;x-=16)ctx.lineTo(x,y+und(x)+2.6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='rgba(122,98,62,.34)';
+    ctx.fillStyle=TH.ridgeDot;
     for(let k=0;k<56;k++){ const px=(k*83.7+i*17)%w;
       ctx.fillRect(px, y+und(px)+3+((k*7.3)%Math.max(2,th-4)), 2.4,2.4); }
     ctx.globalAlpha=1;
@@ -2465,33 +2742,33 @@ function renderGarden(){
     G.flora.forEach(fl=>{ if(fl.row!==i)return;
       const x=fl.fx*w, y2=y+und(x), sw=Math.sin(G.t*.9+fl.ph);
       if(fl.kind===0){        // 草簇
-        ctx.strokeStyle=fl.c; ctx.lineWidth=1.2; ctx.lineCap='round';
+        ctx.strokeStyle=thc(fl.c); ctx.lineWidth=1.2; ctx.lineCap='round';
         for(let b=-1;b<=1;b++){ ctx.beginPath(); ctx.moveTo(x+b*2,y2);
           ctx.quadraticCurveTo(x+b*3+fl.a*3, y2-fl.l*.6,
             x+b*4+fl.a*6+sw*1.2, y2-fl.l-(b===0?2.4:0)); ctx.stroke(); }
       } else if(fl.kind===1){ // 像素小花
         const cs=fl.cell;
-        ctx.strokeStyle=fl.c; ctx.lineWidth=1.1; ctx.lineCap='round';
+        ctx.strokeStyle=thc(fl.c); ctx.lineWidth=1.1; ctx.lineCap='round';
         ctx.beginPath(); ctx.moveTo(x,y2); ctx.lineTo(x+sw,y2-fl.l); ctx.stroke();
         const px2=x+sw, py2=y2-fl.l-cs*1.4;
-        ctx.fillStyle=fl.pc;
+        ctx.fillStyle=thc(fl.pc);
         [[0,-cs],[0,cs],[-cs,0],[cs,0]].forEach(o=>
           ctx.fillRect(px2+o[0]-cs/2,py2+o[1]-cs/2,cs,cs));
-        ctx.fillStyle=fl.pc2; ctx.fillRect(px2-cs/2,py2-cs/2,cs,cs);
+        ctx.fillStyle=thc(fl.pc2); ctx.fillRect(px2-cs/2,py2-cs/2,cs,cs);
       } else if(fl.kind===2){ // 卷须藤
         const tipX=x+fl.dir*fl.l*.55+sw*1.6, tipY=y2-fl.l;
-        ctx.strokeStyle=fl.c; ctx.lineWidth=1.2; ctx.lineCap='round';
+        ctx.strokeStyle=thc(fl.c); ctx.lineWidth=1.2; ctx.lineCap='round';
         ctx.beginPath(); ctx.moveTo(x,y2);
         ctx.bezierCurveTo(x+fl.dir*2,y2-fl.l*.5, tipX-fl.dir*6,tipY+4, tipX,tipY);
         ctx.stroke();
         ctx.beginPath(); ctx.arc(tipX+fl.dir*2.6,tipY-1,2.4,0,5.4); ctx.stroke();
-        ctx.fillStyle=fl.c;
+        ctx.fillStyle=thc(fl.c);
         ctx.fillRect(x+fl.dir*fl.l*.18-1.4,y2-fl.l*.42-1.4,2.8,2.8);
         ctx.fillRect(x+fl.dir*fl.l*.38-1.2,y2-fl.l*.74-1.2,2.4,2.4);
       } else {               // 芽苗
-        ctx.strokeStyle=fl.c; ctx.lineWidth=1.3; ctx.lineCap='round';
+        ctx.strokeStyle=thc(fl.c); ctx.lineWidth=1.3; ctx.lineCap='round';
         ctx.beginPath(); ctx.moveTo(x,y2); ctx.lineTo(x+sw*.6,y2-fl.l*.6); ctx.stroke();
-        ctx.fillStyle=fl.c;
+        ctx.fillStyle=thc(fl.c);
         ctx.beginPath(); ctx.ellipse(x+sw*.6-2.6,y2-fl.l*.6-1.6,3.1,1.7,-.5,0,7);
         ctx.ellipse(x+sw*.6+2.6,y2-fl.l*.6-1.6,3.1,1.7,.5,0,7); ctx.fill();
       }
@@ -2515,7 +2792,7 @@ function renderGarden(){
       ctx.restore(); ctx.globalAlpha=1;
       // 屏幕空间标注：只留图形，不再印说明文字
       const topY=baseY-p.h*p.rs-(p.head+34)*p.rs;
-      if(G.sel===p&&p.state!=='dying'){
+      if((G.sel===p||PIN.G===p)&&p.state!=='dying'){
         ctx.strokeStyle=p.sp.c0; ctx.lineWidth=1.4;
         wobble(ctx,x,baseY-p.h*p.rs-p.head*.55*p.rs,(46+p.head*.55)*p.rs,p.seed,2.4); ctx.stroke(); }
       if(p.state==='dormant'){
@@ -2565,7 +2842,9 @@ cB.addEventListener('pointermove',e=>{
   if(B.drag){ const dx=e.offsetX-B.drag.sx, dy=e.offsetY-B.drag.sy;
     B.drag.moved=Math.max(B.drag.moved,Math.hypot(dx,dy));
     if(B.drag.moved>4){ B.cam.x=B.drag.cx-dx/B.cam.z; B.cam.y=B.drag.cy-dy/B.cam.z; } } });
-cB.addEventListener('pointerup',()=>{ B.drag=null; });
+cB.addEventListener('pointerup',e=>{
+  if(B.drag&&B.drag.moved<4) PIN.B=B.sel||null;    // 没拖动 = 点选
+  B.drag=null; });
 cB.addEventListener('pointerleave',()=>{ B.drag=null; gazeLeave(); });
 cB.addEventListener('wheel',e=>{ e.preventDefault();
   const w=cB._w,h=cB._h;
@@ -2574,9 +2853,13 @@ cB.addEventListener('wheel',e=>{ e.preventDefault();
   B.cam.x=wx-(e.offsetX-w/2)/B.cam.z; B.cam.y=wy-(e.offsetY-h/2)/B.cam.z;
 },{passive:false});
 
-/* --- Ⅱ 花园：移动即浇灌，滚轮上下潜行 --- */
+/* --- Ⅱ 花园：移动即浇灌，滚轮上下潜行，点击才展开档案 --- */
 cG.addEventListener('pointermove',e=>gazeInput(e.offsetX,e.offsetY));
-cG.addEventListener('pointerdown',e=>gazeInput(e.offsetX,e.offsetY));
+cG.addEventListener('pointerdown',e=>{ gazeInput(e.offsetX,e.offsetY); gardenHoverTargets();
+  // 点谁开谁：先看节点，再看植株；点空处收起
+  if(G.hoverNode){ PIN.N=G.hoverNode; PIN.G=null; }
+  else if(G.sel){ PIN.G=G.sel; PIN.N=null; }
+  else { PIN.G=null; PIN.N=null; } });
 cG.addEventListener('pointerleave',()=>gazeLeave());
 cG.addEventListener('wheel',e=>{ e.preventDefault();
   G.camT=clamp(G.camT+e.deltaY*0.55, camMin(), camMax()); G.tour=-9999;
@@ -2595,7 +2878,7 @@ btnSet.onclick=e=>{ e.stopPropagation();
 document.addEventListener('pointerdown',e=>{ if(!$('setWrap').contains(e.target))closeSet(); });
 $('popReseed').onclick=()=>{ reseedGarden(); closeSet();
   toast(tt('花园已重播 —— 新的一园','the garden has been reseeded')); };
-$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); closeSet();
+$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); buildThemeRows(); closeSet();
   toast(tt('语言：中文','Language: English')); };
 
 /* 生态参数滑杆：改的就是这件作品的生态法则，即时生效并记住 */
@@ -2651,6 +2934,54 @@ function buildSrc(){
       +`<em>${txt()}</em><a href="${c.u}" target="_blank" rel="noopener">${c.u}</a></div>`;
   }).join('');
 }
+/* ---- 背景主题：一格一格的小样，点了就换 ---- */
+function themeSwatch(k){
+  const t=THEMES[k];
+  return `linear-gradient(160deg, ${t.sky[0]} 0%, ${t.sky[2]} 46%, ${t.ridge[2]} 47%, ${t.soil[2]} 100%)`;
+}
+function buildThemeRows(){
+  const box=$('themeRows'); box.innerHTML='';
+  Object.keys(THEMES).forEach(k=>{
+    const b=document.createElement('button');
+    b.className='thBtn'+(k===THEME?' on':'');
+    b.innerHTML=`<i style="background:${themeSwatch(k)}"></i>${tt(THEMES[k].zh,THEMES[k].en)}`;
+    b.onclick=()=>{ setTheme(k); buildThemeRows();
+      toast(tt('背景：'+THEMES[k].zh,'Background: '+THEMES[k].en)); };
+    box.appendChild(b);
+  });
+}
+buildThemeRows();
+
+/* ---- 全屏观赏：藏起所有界面，只留画面 ---- */
+let showMode=false;
+function setShow(on){
+  showMode=on;
+  document.body.classList.toggle('show',on);
+  if(on){ const el=document.documentElement;
+    if(el.requestFullscreen)el.requestFullscreen().catch(()=>{}); }
+  else if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+  setTimeout(refit,120);
+}
+$('popShow').onclick=()=>{ closeSet(); setShow(true);
+  toast(tt('全屏观赏 · 按 Esc 或右上角退出','Show mode · Esc or top-right to exit')); };
+$('showExit').onclick=()=>setShow(false);
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement&&showMode)setShow(false); });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&showMode)setShow(false);
+  if((e.key==='f'||e.key==='F')&&!e.metaKey&&!e.ctrlKey)setShow(!showMode);
+});
+
+/* ---- 载入自己的图片：进入画作池，也会从天上飘过 ---- */
+$('popUpload').onclick=()=>$('fileIn').click();
+$('fileIn').onchange=e=>{
+  const n=addUserImages(e.target.files);
+  e.target.value='';
+  if(n){ closeSet();
+    toast(tt(`已载入 ${n} 张图片 · 它们会长成花，也会飞过天空`,
+             `${n} image(s) loaded · they will grow into flowers and drift across the sky`)); }
+};
+
 $('popSrc').onclick=()=>{ buildSrc(); $('srcWrap').classList.add('on'); closeSet(); };
 $('srcClose').onclick=()=>$('srcWrap').classList.remove('on');
 $('srcWrap').addEventListener('pointerdown',e=>{ if(e.target===$('srcWrap'))$('srcWrap').classList.remove('on'); });
@@ -2672,22 +3003,28 @@ function gardenHoverTargets(){
   allNodes().forEach(n=>{ if(Math.abs(GAZE.x-n.fx*w)<n.w/2+14&&Math.abs(gwy-n.y)<n.h/2+14) bn=n; });
   G.hoverNode=bn; G.selNode=bn;
 }
-let cardHold={B:0,G:0,N:0};
-function syncCards(dt){
-  const show=(id,cond,key)=>{
-    if(cond){ cardHold[key]=0.9; $(id).classList.add('on'); }
-    else { cardHold[key]-=dt; if(cardHold[key]<=0)$(id).classList.remove('on'); }
-  };
-  show('cardB', activePage==='bloom'&&!!B.sel, 'B');
-  show('cardG', activePage==='garden'&&!!G.sel, 'G');
-  show('cardN', activePage==='garden'&&!!G.selNode, 'N');
-  // 卡片挪到观众没在看的一侧，避免压住正被注视的花
-  const rightHalf=(G.sel? G.sel.fx>0.56 : (GAZE.x>cG._w*0.56));
+/* 档案卡：点击才打开，并钉在那儿，直到你关掉或点别处 —— 平时画面里没有字 */
+const PIN={B:null,G:null,N:null};
+function syncCards(){
+  if(PIN.G&&(!G.plants.includes(PIN.G)))PIN.G=null;
+  if(PIN.B&&(!B.items.includes(PIN.B)))PIN.B=null;
+  $('cardB').classList.toggle('on', activePage==='bloom'&&!!PIN.B);
+  $('cardG').classList.toggle('on', activePage==='garden'&&!!PIN.G);
+  $('cardN').classList.toggle('on', activePage==='garden'&&!!PIN.N);
+  // 卡片挪到被打开对象的另一侧，别压住它
+  const rightHalf=(PIN.G? PIN.G.fx>0.56 : (PIN.N? PIN.N.fx>0.56 : false));
   $('cardG').classList.toggle('toLeft', rightHalf);
-  $('cardN').classList.toggle('toLeft', rightHalf);
-  if(activePage==='bloom')$('cardB').classList.toggle('toLeft', GAZE.x>cB._w*0.58);
+  $('cardN').classList.toggle('toLeft', PIN.N? PIN.N.fx>0.56 : rightHalf);
+  if(activePage==='bloom'&&PIN.B){
+    const sx=(PIN.B.x-B.cam.x)*B.cam.z+cB._w/2;
+    $('cardB').classList.toggle('toLeft', sx>cB._w*0.58);
+  }
 }
-function refreshCardG(){ const p=G.sel; if(!p)return;
+document.querySelectorAll('.cardX').forEach(b=>{
+  b.onclick=e=>{ e.stopPropagation();
+    const k=b.dataset.card.slice(-1); PIN[k]=null; syncCards(); };
+});
+function refreshCardG(){ const p=PIN.G; if(!p)return;
   const sp=p.sp, tr=G.trends[p.si], st=STG[p.stage];
   $('cgTitle').textContent=p.id+tt(' · 物种档案 SPECIES',' · SPECIES FILE');
   const state=p.state==='dying'?tt('倒伏中 COLLAPSING','collapsing')
@@ -2717,7 +3054,7 @@ function refreshCardG(){ const p=G.sel; if(!p)return;
   R.push([bi('生态状态','STATE'), state]);
   rows($('cgRows'),R);
 }
-function refreshCardN(){ const nd=G.selNode; if(!nd)return;
+function refreshCardN(){ const nd=PIN.N; if(!nd)return;
   $('cnTitle').textContent=tt(nd.zh+' '+nd.en+' · 代谢档案', nd.en+' · METABOLIC FILE');
   let L=UG.layers[0];
   UG.layers.forEach(l=>{ if(nd.y>=l.y)L=l; });
@@ -2771,7 +3108,10 @@ function setPage(p){
 }
 $('tabBloom').onclick=()=>setPage('bloom');
 $('tabGarden').onclick=()=>setPage('garden');
-window.addEventListener('resize',()=>{ xB=fit(cB); xG=fit(cG); buildSoilTex(); });
+function refit(){ xB=fit(cB); xG=fit(cG); G.soilTex=null; }
+window.addEventListener('resize',refit);
+// 进出全屏、隐藏界面时舞台尺寸会变 —— 观察容器本身，比猜时机可靠
+if(window.ResizeObserver) new ResizeObserver(refit).observe(document.querySelector('main'));
 
 let hudAcc=0;
 function updateHUD(dt){
@@ -2785,10 +3125,10 @@ function updateHUD(dt){
   $('meterFill').style.width=S.att.toFixed(1)+'%';
   $('meterNum').textContent=Math.round(S.att);
   $('meter').classList.toggle('low',S.att<22);
-  if(B.sel&&activePage==='bloom')refreshCardB();
+  if(PIN.B&&activePage==='bloom')refreshCardB();
   if(activePage==='garden'){
-    if(G.sel)refreshCardG();
-    if(G.selNode)refreshCardN();
+    if(PIN.G)refreshCardG();
+    if(PIN.N)refreshCardN();
     const d=G.cam<UG.top?0:Math.round((G.cam-UG.top)*M_PER_UNIT);
     $('dVal').textContent=(d>0?'−':'')+d+' m';
     $('dCursor').style.top=(clamp((G.cam-camMin())/(camMax()-camMin()||1),0,1)*140)+'px';
@@ -2806,11 +3146,12 @@ function frame(now){
   if(activePage==='bloom')renderBloom(); else renderGarden();
   drain=Math.min(drain, 20*dt);
   S.att=clamp(S.att+dt*5.2-drain,0,100);
-  syncCards(dt);
+  syncCards();
   updateHUD(dt);
   if(!VT)requestAnimationFrame(frame);
 }
 applyLang();
+setTheme(THEME);
 syncGazeTag();
 GAZE.x=cB._w/2; GAZE.y=cB._h/2; GAZE.tx=GAZE.x; GAZE.ty=GAZE.y;
 if(VT) setInterval(()=>frame(performance.now()),16);
@@ -2822,6 +3163,8 @@ $('enter').onclick=()=>$('intro').remove();
 (function(){
   if(Q.get('skip'))$('intro').remove();
   if(Q.get('lang'))setLang(Q.get('lang'));
+  if(Q.get('th'))setTheme(Q.get('th'));
+  if(Q.get('show'))setShow(true);
   if(Q.get('page')==='garden')setPage('garden');
   const warp=+Q.get('warp')||0;
   if(warp>0){ for(let i=0;i<warp*2;i++)updateGarden(.5); }
