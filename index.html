@@ -286,16 +286,23 @@ const ASSET_BUCKET=[]; let ASSET_ALL=[];
 function hashStr(s){ let h=2166136261;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
   return h>>>0; }
+const CLUSTER_LABEL={};
 if(ASSETS&&ASSETS.items&&ASSETS.items.length){
   ASSETS.atlases.forEach((src,i)=>{ const im=new Image();
     im.onload=()=>atlasReady++; im.src=src; ATLAS[i]=im; });
   for(let i=0;i<PALS.length;i++)ASSET_BUCKET.push([]);
+  const K=(ASSETS.keys||[]).indexOf('cluster');
   ASSETS.items.forEach((it,i)=>{
     ASSET_ALL.push(i);
-    ASSET_BUCKET[hashStr(it[8]||('m'+i))%PALS.length].push(i);   // 物种 = 生成模型
+    // 物种 = 聚类（提示词语义 + 外观），而不是模型名 —— 同种花才是真的相关
+    const c=(K>=0&&it[K]!=null) ? it[K] : hashStr(it[8]||('m'+i));
+    ASSET_BUCKET[c%PALS.length].push(i);
   });
-  console.info(`[Attention Garden] 载入真实素材 ${ASSETS.items.length} 条 / `
-    +`${ASSETS.atlases.length} 张图集`, ASSETS.diversity||'');
+  if(ASSETS.clusters)Object.keys(ASSETS.clusters).forEach(k=>{
+    CLUSTER_LABEL[(+k)%PALS.length]=ASSETS.clusters[k].label||''; });
+  console.info(`[Attention Garden] 真实素材 ${ASSETS.items.length} 条 / `
+    +`${ASSETS.atlases.length} 张图集`,
+    '多样性',ASSETS.diversityAll,'近重复',ASSETS.nearDupRate,ASSETS.clusters||'');
 }
 function titleFromPrompt(p,model){
   if(!p)return model||'未命名对象';
@@ -305,7 +312,9 @@ function titleFromPrompt(p,model){
 }
 function assetArt(i,palIdx){
   const it=ASSETS.items[i], T=ASSETS.tile, model=it[8]||'', prompt=it[9]||'';
-  return { real:true, idx:i,
+  const K=(ASSETS.keys||[]).indexOf('cluster');
+  const cl=(K>=0&&it[K]!=null)?it[K]:null;
+  return { real:true, idx:i, cluster:cl, clusterLabel:(cl!=null?(CLUSTER_LABEL[cl%PALS.length]||''):''),
     atlasI:it[0], sx:it[1]*T, sy:it[2]*T, tile:T,
     isVideo:!!it[3], stratum:it[4], likes:it[5], comments:it[6], frames:it[7],
     model, prompt, srcUrl:it[10], id:it[11],
@@ -818,6 +827,7 @@ function refreshCardB(){ const it=B.sel; if(!it)return;
   const a=it.art, [ev,esrc]=energyRow(it.type,a.real);
   const R=[['名称 TITLE', a.title]];
   if(a.real){
+    if(a.clusterLabel)R.push(['语义簇 CLUSTER', a.clusterLabel, 'col']);
     R.push(['生成模型 MODEL', a.model||'—']);
     if(a.prompt)R.push(['提示词 PROMPT', a.prompt.slice(0,96), 'col']);
     R.push(['地层 STRATUM', a.stratum+' 年']);
@@ -1955,6 +1965,7 @@ function refreshCardG(){ const p=G.sel; if(!p)return;
     ['作品 WORK', a.title]
   ];
   if(a.real){
+    if(a.clusterLabel)R.push(['语义簇 CLUSTER', a.clusterLabel, 'col']);
     R.push(['生成模型 MODEL', a.model||'—']);
     if(a.prompt)R.push(['提示词 PROMPT', a.prompt.slice(0,96), 'col']);
     R.push(['地层 STRATUM', a.stratum+' 年'+(a.isVideo?' · 视频':'')]);
