@@ -40,9 +40,12 @@ PLAN = [
 ]
 
 
-def http_json(url, api_key=None, tries=4):
+def http_json(url, api_key=None, tries=4, verbose=False):
     for i in range(tries):
-        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        req = urllib.request.Request(url, headers={
+            "User-Agent": UA,
+            "Accept": "application/json",
+        })
         if api_key:
             req.add_header("Authorization", f"Bearer {api_key}")
         try:
@@ -55,12 +58,44 @@ def http_json(url, api_key=None, tries=4):
                 time.sleep(wait)
                 continue
             print(f"    HTTP {e.code} {url[:90]}", flush=True)
-            if e.code in (400, 404):
+            if verbose or i == 0:
+                diagnose_http_error(e)
+            if e.code in (400, 401, 403, 404):
                 return None
         except Exception as e:
             print(f"    {type(e).__name__}: {e}", flush=True)
         time.sleep(2 * (i + 1))
     return None
+
+
+def diagnose_http_error(e):
+    """把服务端到底说了什么打出来 —— 区分「站点故障」和「防护层拦截」。"""
+    try:
+        h = dict(e.headers or {})
+    except Exception:
+        h = {}
+    keys = ["server", "cf-ray", "cf-mitigated", "retry-after",
+            "content-type", "x-frame-options", "cf-cache-status"]
+    shown = {k: v for k, v in h.items() if k.lower() in keys}
+    if shown:
+        print("      响应头：", flush=True)
+        for k, v in shown.items():
+            print(f"        {k}: {str(v)[:90]}", flush=True)
+    try:
+        body = e.read(1200).decode("utf-8", "replace")
+    except Exception:
+        body = ""
+    if body:
+        flat = " ".join(body.split())[:400]
+        print(f"      正文片段：{flat}", flush=True)
+        low = body.lower()
+        if "just a moment" in low or "cf-browser-verification" in low \
+                or "challenge-platform" in low or "attention required" in low:
+            print("      ⇒ 判定：Cloudflare 人机验证拦截（不是站点故障）", flush=True)
+            print("        对策：去 civitai.com 账号设置生成 API Key，用 --api-key 带上；", flush=True)
+            print("        仍不行说明对方不希望此类访问，应换数据源，不要绕过验证。", flush=True)
+        elif "maintenance" in low or "unavailable" in low or "503" in low:
+            print("      ⇒ 判定：站点自身不可用，过一阵重试即可", flush=True)
 
 
 def shrink_url(url, width=512):
@@ -153,9 +188,9 @@ def probe(api_key):
     """
     url = f"{API}?{urllib.parse.urlencode({'limit':3,'sort':'Most Reactions','period':'Week','nsfw':'None'})}"
     print(f"请求 {url}\n")
-    data = http_json(url, api_key)
+    data = http_json(url, api_key, tries=2, verbose=True)
     if not data:
-        print("✗ 请求失败。检查网络 / 代理 / 是否需要 API key。")
+        print("\n✗ 请求失败 —— 把上面的响应头与正文片段发我，即可定位原因。")
         return
     print(f"顶层键：{list(data.keys())}")
     md = data.get("metadata") or {}
