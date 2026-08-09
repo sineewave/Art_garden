@@ -116,6 +116,28 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
 .tRow input[type=range]::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--ink);border:0}
 .tRow.off label{opacity:.4}
 
+/* ---------- 数据来源 ---------- */
+#srcWrap{position:fixed;inset:0;background:rgba(242,243,241,.9);z-index:130;
+  display:none;align-items:center;justify-content:center;padding:22px}
+#srcWrap.on{display:flex}
+#srcBox{max-width:640px;max-height:82vh;overflow-y:auto;background:var(--panel);
+  border:1px solid var(--line-soft);border-radius:16px;box-shadow:0 18px 44px rgba(46,45,40,.16);
+  padding:26px 30px 24px;position:relative}
+#srcBox h3{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:2.6px;margin-bottom:10px}
+#srcBox p{font-size:12px;line-height:1.85;opacity:.72;margin-bottom:16px}
+#srcClose{position:absolute;right:14px;top:12px;border:0;background:none;color:var(--ink);
+  font-size:13px;opacity:.4;cursor:pointer;padding:5px 7px}
+#srcClose:hover{opacity:.9}
+.srcRow{border-top:1px solid var(--line-soft);padding:10px 0 9px}
+.srcRow b{display:block;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:1.4px;
+  font-weight:400;opacity:.45;margin-bottom:3px}
+.srcRow span{display:block;font-size:11.5px;line-height:1.7}
+.srcRow a{color:var(--blue);text-decoration:none;font-size:10px;font-family:ui-monospace,Menlo,monospace;
+  word-break:break-all}
+.srcRow a:hover{text-decoration:underline}
+.srcRow em{font-style:normal;display:block;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;
+  opacity:.6;margin-top:3px}
+
 /* ---------- intro / toast ---------- */
 #intro{position:fixed;inset:0;background:rgba(242,243,241,.97);display:flex;align-items:center;justify-content:center;z-index:120;padding:20px}
 .introBox{max-width:560px;background:var(--panel);border:1px solid var(--line-soft);border-radius:16px;
@@ -202,6 +224,7 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
     <div id="setPop">
       <button class="popItem" id="popReseed">↻ 重播花园 RESEED</button>
       <button class="popItem" id="popLang">Switch to English</button>
+      <button class="popItem" id="popSrc">◇ 数据来源 SOURCES</button>
       <div class="popSep" id="popTuneT">生态参数 ECOLOGY</div>
       <div id="tuneRows"></div>
       <button class="popItem" id="popReset">↺ 恢复默认 RESET</button>
@@ -221,6 +244,12 @@ footer{display:flex;align-items:center;gap:14px;padding:8px 16px;border-top:1px 
     <button class="btn" id="enter">进入生态系统 ENTER</button>
   </div>
 </div>
+<div id="srcWrap"><div id="srcBox">
+  <button id="srcClose" aria-label="关闭 CLOSE">✕</button>
+  <h3 id="srcTitle">数据来源 DATA SOURCES</h3>
+  <p id="srcIntro"></p>
+  <div id="srcList"></div>
+</div></div>
 <div class="toastWrap" id="toasts"></div>
 <div id="grain"></div>
 
@@ -358,6 +387,7 @@ const UI_TXT={
   meterLabel:['注意力 ATTENTION','ATTENTION'],
   popReseed:['↻ 重播花园 RESEED','↻ RESEED GARDEN'],
   popReset:['↺ 恢复默认 RESET','↺ RESET DEFAULTS'],
+  popSrc:['◇ 数据来源 SOURCES','◇ DATA SOURCES'],
   popTuneT:['生态参数 ECOLOGY','ECOLOGY PARAMETERS'],
   popLang:['Switch to English','切换到中文'],
   enter:['进入生态系统 ENTER','ENTER THE ECOSYSTEM'],
@@ -406,10 +436,55 @@ function halftoneFill(ctx,x,y,w,h){
   ctx.fillStyle=ctx._half; ctx.fillRect(x,y,w,h);
 }
 const PAL_CN=['赭','蓝','苔','汐','堇','玫','芥','墨'];
+/* ============================================================
+   真实数据 DATA — 每个数字都带出处，设置里可查「数据来源」
+   ------------------------------------------------------------
+   作品谈的是算力的代价，那么台面上的数字就不该是编的。
+   已核对的量只有图像生成这一档；视频/多模态至今没有可比的公开
+   实测，这里如实标为「示意」—— 无法计量本身也是作品要说的事。
+   谱系：Crawford & Joler《Anatomy of an AI System》(2018) 把一台
+   设备拆回矿、电与劳动；Tega Brain 的 Deep Swamp / Asunder /
+   Solar Protocol 把生态系统与计算基础设施摆在同一张图里。
+   ============================================================ */
+const DATA={
+  imgWh:{lo:0.06, mid:2.9, hi:11.49, src:'luccioni24'},  // Wh / 张（= kWh per 1000 inferences）
+  txtWh:{mid:0.047, src:'luccioni24'},
+  gridG:{v:445, src:'iea25'},                            // g CO₂ / kWh，全球均值 2024
+  dc24:{v:415, src:'iea25'}, dc30:{v:945, src:'iea25'},  // 数据中心用电 TWh
+  water:{lo:10, hi:50, src:'li23'},                      // 500 ml / 10–50 次回应
+  gpt3Water:{v:5.4, src:'li23'}                          // 训练 GPT-3 用水（百万升）
+};
+const CITE={
+  luccioni24:{k:'Luccioni+24',
+    zh:'Luccioni, Jernite & Strubell《Power Hungry Processing: Watts Driving the Cost of AI Deployment?》ACM FAccT 2024',
+    en:'Luccioni, Jernite & Strubell, “Power Hungry Processing: Watts Driving the Cost of AI Deployment?”, ACM FAccT 2024',
+    u:'https://doi.org/10.1145/3630106.3658542'},
+  li23:{k:'Li+23',
+    zh:'Li, Yang, Islam & Ren《Making AI Less "Thirsty"》arXiv:2304.03271 / CACM 2025',
+    en:'Li, Yang, Islam & Ren, “Making AI Less ‘Thirsty’”, arXiv:2304.03271 / CACM 2025',
+    u:'https://arxiv.org/abs/2304.03271'},
+  iea25:{k:'IEA 2025',
+    zh:'国际能源署《Energy and AI》（2025）与《Emissions Factors》（2024）',
+    en:'IEA, “Energy and AI” (2025) and “Emissions Factors” (2024)',
+    u:'https://www.iea.org/reports/energy-and-ai'},
+  crawford18:{k:'Crawford & Joler 2018',
+    zh:'Crawford & Joler《Anatomy of an AI System》AI Now Institute & Share Lab, 2018',
+    en:'Crawford & Joler, “Anatomy of an AI System”, AI Now Institute & Share Lab, 2018',
+    u:'https://anatomyof.ai/'},
+  brain:{k:'Tega Brain',
+    zh:'Tega Brain：Deep Swamp (2018)、Asunder (2019)、Solar Protocol (2021–22)',
+    en:'Tega Brain: Deep Swamp (2018), Asunder (2019), Solar Protocol (2021–22)',
+    u:'https://tegabrain.com/'},
+  civitai:{k:'Civitai',
+    zh:'花心画作与互动数据实采自 Civitai 公开 API（本次 700 条，含 likes / 评论 / 模型）',
+    en:'Flower images and reaction counts crawled from the public Civitai API (700 items: likes, comments, model)',
+    u:'https://civitai.com/'}
+};
 const TYPES=[
-  {id:'image', zh:'图像',   en:'IMAGE', color:'#6E93AE', gen:0.08, tick:0.010, w:.55},
-  {id:'video', zh:'视频',   en:'VIDEO', color:'#C2643F', gen:0.65, tick:0.045, w:.30},
-  {id:'multi', zh:'多模态', en:'MULTI', color:'#C9973F', gen:1.10, tick:0.075, w:.15}
+  // gen = 单次生成能耗 Wh。image 用文献中位值；video/multi 无可比实测，标为示意。
+  {id:'image', zh:'图像',   en:'IMAGE', color:'#5D8FB8', gen:DATA.imgWh.mid, tick:0.010, w:.55, cite:'luccioni24'},
+  {id:'video', zh:'视频',   en:'VIDEO', color:'#D96C4A', gen:0.65, tick:0.045, w:.30, cite:null},
+  {id:'multi', zh:'多模态', en:'MULTI', color:'#D9A23F', gen:1.10, tick:0.075, w:.15, cite:null}
 ];
 function pickType(){const r=Math.random();let a=0;for(const t of TYPES){a+=t.w;if(r<a)return t;}return TYPES[0];}
 const MODELS={image:['DIFF·3','PIX-α','LATENT-S'],video:['VIDGEN·2','FRAME-X','MOTION-β'],multi:['MMX·1','OMNI-S','FUSION-γ']};
@@ -963,16 +1038,19 @@ function renderBloom(){
 
 /* 档案卡：有真实素材时显示真实出处与实测/文献能耗，
    并用来源标签区分"实测 / 文献 / 示意"，不把虚构数值伪装成纪实。 */
-const ENERGY_REF={image:[0.06,2.9], video:[8,60], multi:[1.0,5.0]};
-function energyRow(t,real){
-  const r=ENERGY_REF[t.id]||ENERGY_REF.image;
-  return real ? [`${r[0]}–${r[1]} Wh`,bi('文献','LIT.')] : [t.gen.toFixed(2)+' Wh',bi('示意','ILLUS.')];
+/* 能耗一行：图像生成引文献实测区间；无实测的类型如实标为示意 */
+function energyRow(t){
+  if(t.id==='image')
+    return [`${DATA.imgWh.lo}–${DATA.imgWh.hi} Wh`, CITE.luccioni24.k];
+  return [t.gen.toFixed(2)+' Wh', bi('示意','ILLUS.')];
 }
+const co2g   = wh => wh*DATA.gridG.v/1000;         // Wh → g CO₂e
+const waterMl= wh => wh/DATA.imgWh.mid*(500/((DATA.water.lo+DATA.water.hi)/2));
 function refreshCardB(){ const it=B.sel; if(!it)return;
   $('cbTitle').textContent=it.id+tt(' · 生成对象档案',' · OBJECT FILE');
   const stZh=it.state==='ascend'?tt('迁移中 → 花园','migrating → garden')
     :(it.state==='fading'?tt('褪色中','fading'):tt('存活','alive'));
-  const a=it.art, [ev,esrc]=energyRow(it.type,a.real);
+  const a=it.art, [ev,esrc]=energyRow(it.type);
   const R=[[bi('名称','TITLE'), a.title]];
   if(a.real){
     if(a.clusterLabel)R.push([bi('语义簇','CLUSTER'), a.clusterLabel, 'col']);
@@ -988,6 +1066,8 @@ function refreshCardB(){ const it=B.sel; if(!it)return;
   R.push([bi('世代','GEN'), 'G'+it.gen]);
   R.push([bi('累计注意力','ATT'), it.att.toFixed(1)]);
   R.push([bi('生成能耗','ENERGY'), `${ev} <span style="opacity:.45">${esrc}</span>`]);
+  if(it.type.id==='image')R.push([bi('碳排','CO₂e'),
+    `${co2g(DATA.imgWh.mid).toFixed(2)} g <span style="opacity:.45">${CITE.iea25.k}</span>`]);
   R.push([bi('状态','STATE'), stZh]);
   if(a.real&&a.srcUrl)R.push([bi('出处','SOURCE'),'civitai']);
   rows($('cbRows'),R);
@@ -1008,7 +1088,7 @@ const SPECIES=[
   {zh:'铃钟兰', en:'BELLNET',   pal:1,  style:'bars',    form:'bell',   hMul:0.92, gMul:0.94, petals:3,  mk:0.60},
   {zh:'穗序草', en:'SPIKELET',  pal:2,  style:'mosaic',  form:'spike',  hMul:1.16, gMul:1.10, petals:6,  mk:0.56},
   {zh:'伞形藻', en:'UMBRELLE',  pal:3,  style:'blob',    form:'umbel',  hMul:0.96, gMul:1.00, petals:5,  mk:0.62},
-  {zh:'涡卷莲', en:'SPIRALIS',  pal:4,  style:'spiral',  form:'ring',   hMul:0.86, gMul:0.90, petals:6,  mk:0.92},
+  {zh:'杯盏郁', en:'TULIPA',    pal:4,  style:'spiral',  form:'tulip',  hMul:0.94, gMul:0.90, petals:3,  mk:0.62},
   {zh:'蝶尾菊', en:'PAPILIO',   pal:5,  style:'botanic', form:'wing',   hMul:1.04, gMul:1.00, petals:2,  mk:0.80},
   {zh:'流苏柳', en:'FRINGEA',   pal:6,  style:'photo',   form:'fringe', hMul:1.12, gMul:0.96, petals:7,  mk:0.72},
   {zh:'墨点兰', en:'INKSPOT',   pal:7,  style:'pebble',  form:'dot',    hMul:0.90, gMul:1.04, petals:9,  mk:0.94},
@@ -1017,7 +1097,7 @@ const SPECIES=[
   {zh:'辐星菊', en:'RADIANT',   pal:9,  style:'stitch',  form:'star',   hMul:1.06, gMul:1.02, petals:10, mk:0.86},
   {zh:'重瓣芍', en:'LAYERCUP',  pal:10, style:'botanic', form:'layer',  hMul:0.98, gMul:0.88, petals:7,  mk:0.78},
   {zh:'管风铃', en:'TUBEBELL',  pal:11, style:'bars',    form:'tube',   hMul:1.10, gMul:1.00, petals:5,  mk:0.54},
-  {zh:'心叶藤', en:'HEARTVINE', pal:12, style:'blob',    form:'heart',  hMul:1.02, gMul:1.06, petals:6,  mk:0.70},
+  {zh:'荚果草', en:'PODDER',    pal:12, style:'blob',    form:'pod',    hMul:1.08, gMul:1.06, petals:5,  mk:0.58},
   {zh:'方格花', en:'CHECKER',   pal:13, style:'mosaic',  form:'grid',   hMul:0.88, gMul:0.98, petals:5,  mk:0.90}
 ];
 SPECIES.forEach((sp,i)=>{ sp.idx=i; sp.c0=PALS[sp.pal][0]; sp.c1=PALS[sp.pal][1]; sp.c2=PALS[sp.pal][2];
@@ -1056,21 +1136,72 @@ const G={
   cam:0, camT:0, tour:0, tourPhase:0, t:0, dayT:0,
   plants:[], flies:[], pulses:[], seedsF:[], settled:[],
   parts:{sparks:[],petals:[],motes:[],leaves:[]},
-  routers:[], racks:[], gpus:[], sub:null,
+  net:[], edges:[], outEdges:[], colony:{},
   trends:{}, trendAcc:0, sowAcc:0, metaAcc:0, powAcc:0,
   sel:null, selNode:null, hoverNode:null, symbols:[], clouds:[], flora:[],
   soilTex:null, soilW:0
 };
 
-(function initFurniture(){
+/* ============================================================
+   地下 = 一张分层加权网络
+   ------------------------------------------------------------
+   根不是长进土里就完了：每株植物的主根接进一个采集端口，
+   端口 → 网关 → 排序/数据集 → 推理算力 → 供电冷却，层层之间是
+   多对多的加权连边 —— 结构上就是一张前馈网络。观众注视谁，
+   谁那条通路就亮起来。（参考 Crawford & Joler《Anatomy of an AI
+   System》的基础设施剖面，以及 Tega Brain 把生态与算力并置的作品）
+   ============================================================ */
+const NET_LAYERS=[
+  {key:'capture', y:UG.layers[0].y+52, n:12, w:15, h:9,  zh:'采集端口', en:'CAPTURE PORT'},
+  {key:'route',   y:UG.routeY,         n:7,  w:34, h:16, zh:'网关',     en:'ROUTER'},
+  {key:'rank',    y:UG.rackY,          n:5,  w:54, h:26, zh:'数据集机架', en:'DATASET RACK'},
+  {key:'gpu',     y:UG.gpuY,           n:4,  w:62, h:32, zh:'算力核',   en:'GPU CLUSTER'},
+  {key:'power',   y:UG.subY,           n:3,  w:74, h:28, zh:'变电与冷却', en:'POWER & COOLING'}
+];
+function buildNet(){
+  const rnd=sRand(20260809);
+  G.net=NET_LAYERS.map((L,li)=>{
+    const nodes=[];
+    for(let i=0;i<L.n;i++)
+      nodes.push({fx:(i+.5)/L.n+(rnd()-.5)*(.30/L.n), y:L.y+(li===1?(rnd()-.5)*18:0),
+        w:L.w, h:L.h, kind:L.key, zh:L.zh, en:L.en,
+        load:.12+rnd()*.18, count:0, ph:rnd()*7, li, i, hot:0});
+    return {key:L.key, y:L.y, zh:L.zh, en:L.en, nodes};
+  });
+  // 层间连边：就近择优 + 少量远程跨接，权重固定 → 看得出主脉络
+  G.edges=[];
+  for(let li=0;li<G.net.length-1;li++){
+    const A=G.net[li].nodes, B=G.net[li+1].nodes;
+    A.forEach((a,ai)=>{
+      const near=B.map((b,bi)=>({bi,d:Math.abs(b.fx-a.fx)})).sort((x,y)=>x.d-y.d);
+      const k=Math.min(near.length, 2+Math.floor(rnd()*2));
+      for(let t2=0;t2<k;t2++)
+        G.edges.push({li, ai, bi:near[t2].bi, w:(t2===0?.75:.30)+rnd()*.25, ph:rnd()*7, hot:0});
+      if(rnd()<.45){ const far=near[near.length-1].bi;   // 一条长程连接
+        G.edges.push({li, ai, bi:far, w:.14+rnd()*.16, ph:rnd()*7, hot:0}); }
+    });
+  }
+  G.outEdges=G.net.map((_,li)=>G.net[li].nodes.map(()=>[]));
+  G.edges.forEach((e,ei)=>{ if(G.outEdges[e.li]&&G.outEdges[e.li][e.ai])G.outEdges[e.li][e.ai].push(ei); });
+}
+buildNet();
+function netNode(li,i){ return G.net[li].nodes[i]; }
+function allNodes(){ const a=[]; G.net.forEach(L=>L.nodes.forEach(n=>a.push(n))); return a; }
+/* 沿连边随机走一条自上而下的通路（权重越大越可能被选中） */
+function samplePath(startI){
+  const path=[startI==null?RI(0,G.net[0].nodes.length-1):startI];
+  for(let li=0;li<G.net.length-1;li++){
+    const outs=G.outEdges[li][path[li]]||[];
+    if(!outs.length){ path.push(0); continue; }
+    let tot=0; outs.forEach(ei=>tot+=G.edges[ei].w);
+    let r=Math.random()*tot, chosen=outs[0];
+    for(const ei of outs){ r-=G.edges[ei].w; if(r<=0){ chosen=ei; break; } }
+    path.push(G.edges[chosen].bi);
+  }
+  return path;
+}
+(function initSky(){
   const rnd=sRand(20260808);
-  for(let i=0;i<5;i++) G.routers.push({fx:.10+.20*i+(rnd()-.5)*.04, y:UG.routeY+(rnd()-.5)*22,
-    w:38,h:17, kind:'route', zh:'网关', en:'ROUTER', load:.2, count:0, ph:rnd()*7});
-  for(let i=0;i<3;i++) G.racks.push({fx:.22+.28*i+(rnd()-.5)*.03, y:UG.rackY,
-    w:62,h:32, kind:'rack', zh:'数据集机架', en:'DATASET', load:.3, count:0, ph:rnd()*7});
-  for(let i=0;i<2;i++) G.gpus.push({fx:.32+.36*i, y:UG.gpuY,
-    w:76,h:40, kind:'gpu', zh:'算力核', en:'GPU', load:.25, count:0, ph:rnd()*7});
-  G.sub={fx:.5, y:UG.subY, w:92,h:36, kind:'sub', zh:'变电站', en:'SUBSTATION', load:.4, count:0, ph:0};
   const cols=['#D96C4A','#5D8FB8','#D9A23F','#D97E9C','#7FA35B','#4FA096'];
   for(let i=0;i<24;i++) G.symbols.push({fx:rnd(), wy:-70-rnd()*330,
     kind:Math.floor(rnd()*4), c:cols[Math.floor(rnd()*cols.length)], s:4+rnd()*5, sp:.006+rnd()*.02, ph:rnd()*7});
@@ -1096,7 +1227,6 @@ function buildFlora(){
     G.flora.push(f);
   }
 }
-function allNodes(){ return [...G.routers,...G.racks,...G.gpus,G.sub]; }
 
 /* ---- 世界⇄屏幕（只有垂直位移） ---- */
 const hor=()=>cG._h*0.72;   // 花变高了，留足天空
@@ -1116,18 +1246,37 @@ function polyPos(pts,t){
 }
 
 /* ---- 根系：递归分形，随阶段加深，缓存于植株 ---- */
+/* ---- 根系：一条粗主根（主脉络）直插采集端口，沿途分出侧根 ---- */
 function buildRoots(p){
   const rnd=sRand(Math.floor(p.seed*9991)+p.stage*13+7);
-  const segs=[]; const lvl=Math.min(2+p.stage,7);
-  (function br(x,y,ang,len,d){
-    if(d>=lvl||len<2.4||y>UG.layers[1].y+30)return;
-    const x2=x+Math.cos(ang)*len, y2=y+Math.sin(ang)*len;
-    segs.push({x,y,x2,y2,d});
-    const n=d<1?2:(rnd()<.72?2:1);
-    for(let i=0;i<n;i++)
-      br(x2,y2, ang+(i? .42+rnd()*.42 : -(.42+rnd()*.42))*(rnd()<.7?1:.6),
-         len*(.72+rnd()*.12), d+1);
-  })(0, UG.top, Math.PI/2, 12+p.stage*3.4, 0);
+  const segs=[];
+  const port=G.net[0].nodes[p.port||0];
+  const deep=lerp(NET_LAYERS[0].y+10, UG.routeY-26, clamp(p.stage/7,0,1))*(0.9+(p.vig||1)*0.12);
+  const dx=((port?port.fx:p.fx)-p.fx)*260;     // 主根向自己的采集端口偏斜
+  const N=9;
+  let px=0, py=UG.top;
+  for(let i=1;i<=N;i++){
+    const t2=i/N, ease=t2*t2*(3-2*t2);
+    const nx=dx*ease+Math.sin(t2*3.1+p.seed)*5.5*(1-t2);
+    const ny=UG.top+(deep-UG.top)*t2;
+    segs.push({x:px,y:py,x2:nx,y2:ny,d:0,main:1,t:t2});
+    // 侧根：从主根节点上分叉，越深越短
+    if(i>=2&&i<=N-1){
+      const lvl=Math.min(2+Math.floor(p.stage*.6),5);
+      const dir=(i%2?1:-1)*(rnd()<.85?1:-1);
+      (function br(x,y,ang,len,d){
+        if(d>=lvl||len<3||y>UG.routeY-10)return;
+        const x2=x+Math.cos(ang)*len, y2=y+Math.sin(ang)*len;
+        segs.push({x,y,x2,y2,d:d+1});
+        const n=d<1?2:(rnd()<.66?2:1);
+        for(let k=0;k<n;k++)
+          br(x2,y2, ang+(k? .40+rnd()*.44 : -(.40+rnd()*.44))*(rnd()<.7?1:.6),
+             len*(.70+rnd()*.14), d+1);
+      })(nx,ny, dir>0?rnd()*.7:Math.PI-rnd()*.7, (16+p.stage*3.2)*(1-t2*.55), 0);
+    }
+    px=nx; py=ny;
+  }
+  p.rootTip=[px,py];
   p.rootSegs=segs; p.rootT=p.rootT||0;
 }
 function buildBranches(p){
@@ -1163,14 +1312,22 @@ function plantAt(o={}){
   let row=o.row;
   if(row===undefined){ const c=[0,0,0,0]; G.plants.forEach(q=>c[q.row]++);
     row=c.indexOf(Math.min(...c)); if(Math.random()<.3)row=RI(0,3); }
+  // 同种成丛：每个物种有一块自己的地盘，新株优先落在丛内 —— 看得出群落主脉络
+  if(!G.colony[si]) G.colony[si]={cx:R(.12,.88), w:.10};
+  const col=G.colony[si];
   let fx;
-  if(o.nearFx!==undefined) fx=clamp(o.nearFx+R(.085,.17)*(Math.random()<.5?-1:1),.05,.95);
-  else{ let best=.5,bs=-1;
-    for(let k=0;k<18;k++){ const cnd=R(.06,.94); let sc=1e9;
+  if(o.nearFx!==undefined) fx=clamp(o.nearFx+R(.05,.11)*(Math.random()<.5?-1:1),.04,.96);
+  else{
+    const lo=col?clamp(col.cx-col.w,.04,.96):.06, hi=col?clamp(col.cx+col.w,.04,.96):.94;
+    let best=(lo+hi)/2, bs=-1;
+    for(let k=0;k<20;k++){
+      // 丛内取点，并向丛心加权；没有地盘的物种才全场找空位
+      const cnd=col? clamp(lerp(col.cx, R(lo,hi), .78), .04,.96) : R(lo,hi);
+      let sc=1e9;
       G.plants.forEach(q=>{
         // 同排要让位；更靠前、花头更大的邻居遮挡力更强，也要让
         const occl=(q.row>row? 1.9 : 1.0)*(0.5+(q.head||0)/70);
-        const w2=(q.row===row?1.6:1.0)*occl;
+        const w2=(q.row===row?1.6:1.0)*occl*(q.si===si?0.45:1);   // 同种之间容许挨近
         sc=Math.min(sc, Math.abs(q.fx-cnd)/Math.max(.4,w2)); });
       if(!G.plants.length)sc=1;
       if(sc>bs){bs=sc;best=cnd;} }
@@ -1192,7 +1349,7 @@ function plantAt(o={}){
     seed:R(0,9), children:0, seedAcc:R(0,10), energy:type.gen,
     router:0, branches:[], rootSegs:[], rootT:0 };
   let bd2=1e9;
-  G.routers.forEach((r,i)=>{ const d=Math.abs(r.fx-fx); if(d<bd2){bd2=d;p.router=i;} });
+  G.net[0].nodes.forEach((nd,i)=>{ const d=Math.abs(nd.fx-fx); if(d<bd2){bd2=d;p.port=i;} });
   const st=STG[p.stage];
   p.h=st.h*sp.hMul*p.hJit*(p.stage>0?1:0); p.head=st.head*p.headJit*vig;
   if(p.stage>=4) buildBranches(p);
@@ -1230,11 +1387,13 @@ function computeTrends(){
 function trendCount(){ let n=0; Object.values(G.trends).forEach(t=>{ if(t.on)n++; }); return n; }
 
 /* ---- 代谢脉冲 ---- */
+/* 一次脉冲 = 一条自采集端口贯穿到供电层的通路；signal 由某株植物发起 */
 function spawnPulse(kind,p){
-  if(G.pulses.length>90)return;
-  if(kind==='signal'&&p) G.pulses.push({kind, p, t:0, spd:.62});
-  else if(kind==='data') G.pulses.push({kind, ri:RI(0,G.racks.length-1), gi:RI(0,G.gpus.length-1), t:0, spd:.7});
-  else if(kind==='power') G.pulses.push({kind, gi:RI(0,G.gpus.length-1), t:0, spd:.55});
+  if(G.pulses.length>110)return;
+  const start=(kind==='signal'&&p)?p.port:null;
+  const path=samplePath(start);
+  G.pulses.push({kind, p:(kind==='signal'?p:null), path, t:0,
+                 spd:kind==='power'?.55:(kind==='data'?.7:.62)});
 }
 
 /* ---- 算法注视的偏好目标 ---- */
@@ -1257,22 +1416,45 @@ function gazePickPlant(){
   return [clamp(x,60,w-60), clamp(y,60,cG._h-60)];
 }
 
-/* ---- 初始群落：每次载入都随机生成；设置里的「重播」也走这里 ---- */
+/* ---- 成园：每次载入都不一样 ----
+   变量不只是"种哪几种"，还包括：分几丛、每丛多大、地盘落在哪、
+   整园的成熟度（有时开场就是一片老林，有时几乎全是幼苗）。 ---- */
 function reseedGarden(){
   G.plants.length=0; G.seedsF.length=0; G.flies.length=0; G.settled.length=0;
   G.parts.sparks.length=0; G.parts.petals.length=0; G.parts.motes.length=0; G.parts.leaves.length=0;
-  G.trends={}; G.sel=null;
+  G.trends={}; G.sel=null; G.colony={}; G.selPath=null; G.selPathFor=null;
   buildFlora();
-  // 随机挑一个主角物种组成已成形的群落，其余散布在各生长期
   const order=SPECIES.map((_,i)=>i);
   for(let i=order.length-1;i>0;i--){ const j=RI(0,i); [order[i],order[j]]=[order[j],order[i]]; }
-  const plan=[[order[0],6],[order[0],5],[order[0],5]];
-  for(let k=0,n=RI(6,9);k<n;k++) plan.push([order[1+k%(order.length-1)], RI(1,5)]);
-  plan.forEach(([si,stage])=>{
-    const p=plantAt({si,stage});
-    if(p){ p.g=R(.1,.75); p.att=R(6,16);
-      p.branches.forEach(b=>b.t=R(.5,1)); p.rootT=1; }
+
+  const nCol=RI(2,4);                       // 几丛群落
+  const mature=R(0,1);                      // 0 = 一园幼苗，1 = 开场即老林
+  const bands=[];                           // 给每丛切一块不重叠的地盘
+  const seg=1/nCol;
+  for(let c=0;c<nCol;c++){
+    const si=order[c];
+    const cx=clamp(seg*(c+.5)+R(-seg*.22,seg*.22), .12,.88);
+    const wd=seg*R(.26,.42);
+    G.colony[si]={cx, w:wd};
+    bands.push({si, cx, wd, n:RI(2,Math.min(4,TUNE.speciesCap))});
+  }
+  bands.forEach(b=>{
+    for(let k=0;k<b.n;k++){
+      const st=clamp(Math.round(lerp(RI(2,4),RI(5,7),mature)+R(-.6,.6)),1,7);
+      const p=plantAt({si:b.si, stage:st});
+      if(p){ p.g=R(.1,.85); p.att=R(6,18);
+        p.branches.forEach(bb=>bb.t=R(.5,1)); p.rootT=1; }
+    }
   });
+  // 散生：不成丛的其它物种，随机占位
+  for(let k=0,n=RI(3,6);k<n;k++){
+    const si=order[(nCol+k)%order.length];
+    if(!G.colony[si]) G.colony[si]={cx:R(.1,.9), w:.10};
+    const st=clamp(Math.round(lerp(RI(0,3),RI(3,6),mature)),0,7);
+    const p=plantAt({si, stage:st});
+    if(p){ p.g=R(.05,.8); p.att=R(4,12); p.rootT=1;
+      p.branches.forEach(bb=>bb.t=R(.2,1)); }
+  }
   computeTrends();
 }
 reseedGarden();
@@ -1483,19 +1665,26 @@ function updateGarden(dt){
     pl.t+=dt*pl.spd;
     const dead=pl.kind==='signal'&&!G.plants.includes(pl.p);
     if(pl.t>=1||dead){
-      if(!dead){
-        if(pl.kind==='signal'){ const r=G.routers[pl.p.router]; if(r){r.load=Math.min(1,r.load+.16);r.count++;}
-          const g=G.gpus[pl.p.router%G.gpus.length]; if(g){g.load=Math.min(1,g.load+.08);g.count++;} }
-        else if(pl.kind==='data'){ const rk=G.racks[pl.ri], g=G.gpus[pl.gi];
-          if(rk){rk.load=Math.min(1,rk.load+.14);rk.count++;} if(g){g.load=Math.min(1,g.load+.12);g.count++;} }
-        else { const g=G.gpus[pl.gi]; if(g)g.load=Math.min(1,g.load+.1); G.sub.count++; }
+      if(!dead&&pl.path){
+        pl.path.forEach((ni,li)=>{ const nd=netNode(li,ni); if(!nd)return;
+          nd.load=Math.min(1,nd.load+[.10,.15,.13,.12,.10][li]); nd.count++; });
       }
       G.pulses.splice(i,1); }
   }
-  allNodes().forEach(n=>n.load=Math.max(.08,n.load-dt*.2));
+  allNodes().forEach(n=>{ n.load=Math.max(.06,n.load-dt*.2); n.hot=Math.max(0,n.hot-dt*1.6); });
+  G.edges.forEach(e=>e.hot=Math.max(0,e.hot-dt*1.4));
+  // 被注视的那株，点亮它那条通路 —— 一次注视要走完整个基础设施
+  if(G.sel&&G.sel.port!==undefined){
+    const path=G.selPath&&G.selPathFor===G.sel?G.selPath:(G.selPath=samplePath(G.sel.port),G.selPathFor=G.sel,G.selPath);
+    path.forEach((ni,li)=>{ const nd=netNode(li,ni); if(nd)nd.hot=1; });
+    for(let li=0;li<path.length-1;li++)
+      (G.outEdges[li][path[li]]||[]).forEach(ei=>{
+        if(G.edges[ei].bi===path[li+1])G.edges[ei].hot=1; });
+  } else { G.selPath=null; G.selPathFor=null; }
 
   // 功率模型
-  const target=42+G.plants.length*.7+G.pulses.length*1.7+G.gpus.reduce((s,g)=>s+g.load*70,0);
+  const target=42+G.plants.length*.7+G.pulses.length*1.7+
+    G.net[3].nodes.reduce((s,g)=>s+g.load*70,0);
   S.power=lerp(S.power,target,dt*.6);
   S.energy+=S.power*dt/3600*.6;
   return active?drain:0;
@@ -1643,22 +1832,29 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
         ctx.fillStyle=c2; ctx.beginPath(); ctx.arc(ex,ey-rr*.06,rr*.30,0,7); ctx.fill();
       }
       break; }
-    case 'ring': { // 环纹：平涂同心环 + 环游像素点
-      const ring=(rr,lw,col,colS)=>{
-        ctx.save(); ctx.translate(0,sOff*.8);
-        ctx.strokeStyle=colS; ctx.lineWidth=lw;
-        ctx.beginPath(); ctx.arc(0,0,rr,0,7); ctx.stroke(); ctx.restore();
-        ctx.strokeStyle=col; ctx.lineWidth=lw;
-        ctx.beginPath(); ctx.arc(0,0,rr,0,7); ctx.stroke();
-      };
-      ring(R2*.82,R2*.20,c0,sh0);
-      ring(R2*1.22,R2*.09,c1,sh1);
-      for(let k=0;k<nP;k++){ const a=k/nP*Math.PI*2+G.t*.22;
-        const cs=Math.max(2,R2*.15);
-        ctx.fillStyle=k%2?c0:c2;
-        ctx.fillRect(Math.cos(a)*R2*1.22-cs/2,Math.sin(a)*R2*1.22-cs/2,cs,cs); }
-      ctx.fillStyle=c2; ctx.beginPath(); ctx.arc(0,0,R2*.20,0,7); ctx.fill();
-      ctx.fillStyle=tint(c0,.4); ctx.fillRect(-R2*.06,-R2*.06,R2*.12,R2*.12);
+    case 'tulip': { // 杯盏郁：三瓣合抱的杯，外瓣张开一点
+      const cw2=R2*.72, ch=R2*1.16, by=R2*.46;
+      [-1,1].forEach(d=>{                      // 外侧两瓣
+        const fl=1+Math.sin(G.t*.8+p.seed+(d>0?.6:0))*.03;
+        flat(ctx,()=>{ ctx.beginPath();
+          ctx.moveTo(d*cw2*.16,by);
+          ctx.bezierCurveTo(d*cw2*1.16,by-ch*.30*fl, d*cw2*1.12,by-ch*.86*fl, d*cw2*.52,by-ch*fl);
+          ctx.bezierCurveTo(d*cw2*.30,by-ch*.72*fl, d*cw2*.16,by-ch*.34*fl, d*cw2*.16,by);
+          ctx.closePath(); }, c1, sh1, d*1.2, sOff*.7);
+      });
+      flat(ctx,()=>{ ctx.beginPath();          // 中央主瓣
+        ctx.moveTo(-cw2*.52,by);
+        ctx.bezierCurveTo(-cw2*.72,by-ch*.52, -cw2*.44,by-ch*1.02, 0,by-ch*1.06);
+        ctx.bezierCurveTo(cw2*.44,by-ch*1.02, cw2*.72,by-ch*.52, cw2*.52,by);
+        ctx.bezierCurveTo(cw2*.24,by+ch*.14, -cw2*.24,by+ch*.14, -cw2*.52,by);
+        ctx.closePath(); }, c0, sh0, 0, sOff);
+      ctx.fillStyle=tint(c0,.34);              // 杯口高光
+      ctx.fillRect(-cw2*.40,by-ch*.80,cw2*.26,ch*.46);
+      { const cs=Math.max(2,R2*.13); ctx.fillStyle=c2;   // 像素花蕊
+        [[0,-cs],[-cs,0],[cs,0]].forEach(o=>
+          ctx.fillRect(o[0]-cs/2,by-ch*.94+o[1]-cs/2,cs-.5,cs-.5)); }
+      ctx.strokeStyle=dim('#87A863',f); ctx.lineWidth=1.5; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,by); ctx.lineTo(0,by+R2*.34); ctx.stroke();
       break; }
     case 'wing': { // 蝶形：左右不对称双翼，像素斑点代替翅脉
       [-1,1].forEach((d,i)=>{
@@ -1764,25 +1960,32 @@ function drawFlower(ctx,p,hd,open,art,hueOv){
       ctx.strokeStyle=dim('#87A863',f); ctx.lineWidth=1.4; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(-R2*.46*(n-1)/2,R2*.14); ctx.lineTo(R2*.46*(n-1)/2,R2*.14); ctx.stroke();
       break; }
-    case 'heart': { // 心叶藤：环成一圈的心形叶，叶间缀小点
-      const n=clamp(nP,4,7);
-      const heart=(hs)=>{ ctx.beginPath();
-        ctx.moveTo(0,hs*.95);
-        ctx.bezierCurveTo(-hs*1.24,hs*.10, -hs*.56,-hs*.86, 0,-hs*.22);
-        ctx.bezierCurveTo( hs*.56,-hs*.86,  hs*1.24,hs*.10, 0,hs*.95);
-        ctx.closePath(); };
+    case 'pod': { // 荚果草：一杆上挂着几枚饱满的豆荚，荚上有籽粒
+      const n=clamp(nP,3,5);
+      ctx.strokeStyle=dim('#87A863',f); ctx.lineWidth=1.6; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,R2*.5); ctx.lineTo(0,-R2*1.06); ctx.stroke();
       for(let k=0;k<n;k++){
-        const a=k/n*Math.PI*2+p.seed*.3+Math.sin(G.t*.4+p.seed)*.03;
-        const rr=R2*1.02, hs=R2*.40;
-        ctx.save(); ctx.translate(Math.cos(a)*rr,Math.sin(a)*rr*.92); ctx.rotate(a+Math.PI/2);
-        flat(ctx,()=>heart(hs), k%2?c0:c1, k%2?sh0:sh1, 0,sOff*.7);
-        ctx.fillStyle=tint(k%2?c0:c1,.36);
-        ctx.fillRect(-hs*.5,-hs*.30,hs*.34,hs*.34);
+        const d=k%2?1:-1, fr=k/(n-1||1);
+        const py2=R2*(.32-fr*1.10), pl=R2*(.86-fr*.24), pw=R2*(.23-fr*.05);
+        const ang=d*(.42+fr*.16)+Math.sin(G.t*.8+k+p.seed)*.03;
+        ctx.strokeStyle=dim('#87A863',f); ctx.lineWidth=1.2;
+        ctx.beginPath(); ctx.moveTo(0,py2); ctx.lineTo(Math.sin(ang)*R2*.2,py2-Math.cos(ang)*R2*.18); ctx.stroke();
+        ctx.save(); ctx.translate(Math.sin(ang)*R2*.22,py2-Math.cos(ang)*R2*.2); ctx.rotate(ang);
+        const col=k%2?c0:c1, sc=k%2?sh0:sh1;
+        flat(ctx,()=>{ ctx.beginPath();     // 荚：两头尖的梭形
+          ctx.moveTo(0,0);
+          ctx.bezierCurveTo(-pw,pl*.24, -pw,pl*.74, 0,pl);
+          ctx.bezierCurveTo( pw,pl*.74,  pw,pl*.24, 0,0);
+          ctx.closePath(); }, col, sc, 0, sOff*.7);
+        const seeds=3;                       // 荚里的籽：像素方粒
+        for(let t2=0;t2<seeds;t2++){
+          const cs=Math.max(1.6,pw*.62);
+          ctx.fillStyle=tint(col,.42);
+          ctx.fillRect(-cs/2, pl*(.22+t2*.26)-cs/2, cs,cs);
+        }
         ctx.restore();
-        const a2=(k+.5)/n*Math.PI*2+p.seed*.3, cs=Math.max(2,R2*.12);
-        ctx.fillStyle=c2;
-        ctx.fillRect(Math.cos(a2)*R2*1.36-cs/2, Math.sin(a2)*R2*1.26-cs/2, cs,cs);
       }
+      pixDust(ctx,p.seed,R2*.7,tint(c1,.4),c2,4);
       break; }
     case 'grid': { // 方格花：棋盘像素花环，中心留给画作
       const N=7, cs=R2*.42;
@@ -1954,8 +2157,8 @@ function buildSoilTex(){
   const w=Math.max(320,Math.round(cG._w)), h=UG.bottom-UG.top;
   const c=document.createElement('canvas'); c.width=w; c.height=h;
   const ctx=c.getContext('2d'); const rnd=sRand(4242);
-  const bands=[['#BFA37E',UG.top],['#A5895F',UG.layers[1].y],['#87694A',UG.layers[2].y],
-               ['#64502F',UG.layers[3].y],['#463522',UG.layers[4].y],['#302416',UG.bottom]];
+  const bands=[['#C6A87E',UG.top],['#9C7E55',UG.layers[1].y],['#5E4A31',UG.layers[2].y],
+               ['#33291D',UG.layers[3].y],['#1E1913',UG.layers[4].y],['#141110',UG.bottom]];
   for(let i=0;i<bands.length-1;i++){
     const y0=bands[i][1]-UG.top, y1=bands[i+1][1]-UG.top;
     const g=ctx.createLinearGradient(0,y0,0,y1);
@@ -1980,41 +2183,74 @@ function buildSoilTex(){
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); ctx.setLineDash([]); });
   G.soilTex=c; G.soilW=w;
 }
-/* ---- 节点机箱（名称移入悬停档案卡，不再常驻标注） ---- */
+/* ---- 节点：不同层不同外观（端口 / 网关 / 机架 / 算力 / 供电） ---- */
 function drawNode(ctx,nd,w){
   const x=nd.fx*w, y=gy(nd.y);
   if(y<-80||y>cG._h+80)return;
-  const hovered=G.hoverNode===nd;
-  ctx.fillStyle='#2C2417'; ctx.fillRect(x-nd.w/2,y-nd.h/2,nd.w,nd.h);
-  ctx.strokeStyle=hovered?'rgba(236,214,164,.95)':'rgba(206,190,158,.5)';
-  ctx.lineWidth=hovered?1.6:1.1; ctx.strokeRect(x-nd.w/2,y-nd.h/2,nd.w,nd.h);
-  const on=Math.sin(G.t*3+nd.ph)>0;
-  ctx.fillStyle=(on||nd.load>.6)?'#D96C4A':'#5B4A32'; ctx.fillRect(x-nd.w/2+5,y-nd.h/2+5,3.6,3.6);
-  ctx.fillStyle=nd.load>.6?'#D9A23F':'#7FA35B'; ctx.fillRect(x-nd.w/2+5,y-nd.h/2+11,3.6,3.6);
-  if(nd.kind==='rack'||nd.kind==='gpu'){
-    const cols=nd.kind==='gpu'?7:6, rws=3;
+  const live=Math.max(nd.hot, G.hoverNode===nd?1:0);
+  const W=nd.w, H=nd.h;
+  if(nd.kind==='capture'){    // 采集端口：一枚小接头
+    ctx.fillStyle=live>.2?'#4E6B5A':'#2C3830';
+    ctx.fillRect(x-W/2,y-H/2,W,H);
+    ctx.strokeStyle=live>.2?'rgba(150,235,200,.95)':'rgba(190,215,190,.35)';
+    ctx.lineWidth=1; ctx.strokeRect(x-W/2,y-H/2,W,H);
+    ctx.fillStyle=live>.2?'#9DF0C6':hexA('#7FA35B',.55);
+    ctx.fillRect(x-1.6,y-H/2-3,3.2,3);
+    return;
+  }
+  ctx.fillStyle='#241E16'; ctx.fillRect(x-W/2,y-H/2,W,H);
+  ctx.strokeStyle=live>.2?'rgba(150,235,200,.9)':'rgba(206,190,158,.42)';
+  ctx.lineWidth=live>.2?1.7:1.1; ctx.strokeRect(x-W/2,y-H/2,W,H);
+  if(nd.kind==='rank'||nd.kind==='gpu'){
+    const cols=nd.kind==='gpu'?6:5, rws=3;
     for(let r=0;r<rws;r++)for(let c2=0;c2<cols;c2++){
       const lit=Math.sin(G.t*3.4+nd.ph+r*1.3+c2*.7)>.25;
       ctx.fillStyle=lit?(nd.kind==='gpu'?'#D9A23F':'#5D8FB8'):'#3A3226';
-      ctx.fillRect(x-nd.w/2+12+c2*8, y-nd.h/2+6+r*7, 5,4); }
+      ctx.fillRect(x-W/2+8+c2*8, y-H/2+6+r*7, 5,4); }
+  } else if(nd.kind==='route'){
+    for(let c2=0;c2<4;c2++){ const lit=Math.sin(G.t*4+nd.ph+c2)>0;
+      ctx.fillStyle=lit?'#7FD8B4':'#37453C'; ctx.fillRect(x-W/2+6+c2*7,y-3,4,6); }
+  } else {                    // power：变压片 + 转动的冷却风扇
+    for(let c2=0;c2<5;c2++){ ctx.fillStyle=c2%2?'#5B4A32':'#3A3226';
+      ctx.fillRect(x-W/2+6+c2*12,y-H/2+5,9,H-16); }
+    ctx.save(); ctx.translate(x+W/2-12,y+H/2-9); ctx.rotate(G.t*2.4);
+    ctx.strokeStyle='rgba(94,180,168,.85)'; ctx.lineWidth=1.4;
+    for(let k=0;k<3;k++){ ctx.rotate(Math.PI*2/3);
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(5,0); ctx.stroke(); }
+    ctx.restore();
   }
   // 负载条
-  ctx.fillStyle='#241D15'; ctx.fillRect(x-nd.w/2+5,y+nd.h/2-7,nd.w-10,4);
-  ctx.fillStyle=nd.load>.7?'#D96C4A':'#D9A23F'; ctx.fillRect(x-nd.w/2+5,y+nd.h/2-7,(nd.w-10)*nd.load,4);
+  ctx.fillStyle='#1B160F'; ctx.fillRect(x-W/2+4,y+H/2-6,W-8,3.4);
+  ctx.fillStyle=nd.load>.7?'#D96C4A':'#D9A23F'; ctx.fillRect(x-W/2+4,y+H/2-6,(W-8)*nd.load,3.4);
   if(nd.kind==='gpu'&&nd.load>.35){ // 热浪
     for(let k=0;k<3;k++){ const ph=(G.t*24+k*17)%34;
       ctx.strokeStyle=hexA('#D9A23F',.24*nd.load*(1-ph/34)); ctx.lineWidth=1.2;
-      ctx.beginPath(); ctx.arc(x-16+k*16,y-nd.h/2-6-ph,4,Math.PI,0); ctx.stroke(); } }
+      ctx.beginPath(); ctx.arc(x-14+k*14,y-H/2-6-ph,4,Math.PI,0); ctx.stroke(); } }
+}
+/* 层间连边：竖直切线的贝塞尔（像成束的光纤），采样成折线供脉冲行走 */
+function edgePts(e,w,seg){
+  const a=netNode(e.li,e.ai), b=netNode(e.li+1,e.bi);
+  const ax=a.fx*w, ay=gy(a.y)+a.h/2, bx=b.fx*w, by=gy(b.y)-b.h/2;
+  const d=(by-ay)*.55, out=[];
+  const n=seg||10;
+  for(let i=0;i<=n;i++){ const t=i/n, u=1-t;
+    out.push([u*u*u*ax+3*u*u*t*ax+3*u*t*t*bx+t*t*t*bx,
+              u*u*u*ay+3*u*u*t*(ay+d)+3*u*t*t*(by-d)+t*t*t*by]);
+  }
+  return out;
 }
 function pulsePts(pl,w){
-  if(pl.kind==='signal'){ const p=pl.p; if(!G.plants.includes(p))return null;
-    const x=p.fx*w, r=G.routers[p.router], rx=r.fx*w, g=G.gpus[p.router%G.gpus.length], gx=g.fx*w;
-    return [[x,gy(UG.top+4)],[x,gy(UG.routeY-30)],[rx,gy(UG.routeY-r.h/2)],
-            [rx,gy(UG.routeY+r.h/2)],[rx,gy(UG.busY)],[gx,gy(UG.busY)],[gx,gy(UG.gpuY-g.h/2)]]; }
-  if(pl.kind==='data'){ const rk=G.racks[pl.ri], g=G.gpus[pl.gi];
-    return [[rk.fx*w,gy(UG.rackY+rk.h/2)],[rk.fx*w,gy(UG.busY)],[g.fx*w,gy(UG.busY)],[g.fx*w,gy(UG.gpuY-g.h/2)]]; }
-  const g=G.gpus[pl.gi], sx=G.sub.fx*w;
-  return [[sx,gy(UG.subY-G.sub.h/2)],[sx,gy(UG.subY-40)],[g.fx*w,gy(UG.subY-40)],[g.fx*w,gy(UG.gpuY+g.h/2)]];
+  if(pl.kind==='signal'&&pl.p&&!G.plants.includes(pl.p))return null;
+  if(!pl.path)return null;
+  const pts=[];
+  const p0=netNode(0,pl.path[0]);
+  if(pl.kind==='signal'&&pl.p) pts.push([pl.p.fx*w, gy(UG.top+2)]);
+  pts.push([p0.fx*w, gy(p0.y)-p0.h/2]);
+  for(let li=0;li<pl.path.length-1;li++){
+    const e={li, ai:pl.path[li], bi:pl.path[li+1]};
+    edgePts(e,w,8).forEach(q=>pts.push(q));
+  }
+  return pts;
 }
 const PULSE_COL={signal:'#D9A23F', data:'#5D8FB8', power:'#D96C4A'};
 
@@ -2107,76 +2343,93 @@ function renderGarden(){
   const ugTop=gy(UG.top);
   if(ugTop<h){
     ctx.drawImage(G.soilTex,0,ugTop,w,UG.bottom-UG.top);
-    ctx.fillStyle='#261C0C'; ctx.fillRect(0,gy(UG.bottom),w,Math.max(0,h-gy(UG.bottom)));
+    ctx.fillStyle='#100E0D'; ctx.fillRect(0,gy(UG.bottom),w,Math.max(0,h-gy(UG.bottom)));
     // 剖面制图网格：细点线 + 深度刻度（只保留数字，不再印说明文字）
-    ctx.save(); ctx.strokeStyle='rgba(244,238,222,.09)'; ctx.lineWidth=1;
+    ctx.save(); ctx.strokeStyle='rgba(244,238,222,.13)'; ctx.lineWidth=1;
     ctx.setLineDash([1,7]);
     for(let x=60;x<w;x+=120){ ctx.beginPath();
       ctx.moveTo(x,Math.max(ugTop,0)); ctx.lineTo(x,Math.min(gy(UG.bottom),h)); ctx.stroke(); }
     ctx.setLineDash([]);
-    ctx.fillStyle='rgba(244,238,222,.15)'; ctx.font='7px ui-monospace,Menlo,monospace';
+    ctx.fillStyle='rgba(244,238,222,.26)'; ctx.font='7px ui-monospace,Menlo,monospace';
     for(let wy=UG.top+40;wy<UG.bottom;wy+=40){ const y=gy(wy); if(y<ugTop||y>h)continue;
       ctx.fillRect(w-26,y,wy%160===UG.top%160?9:5,1);
       if(wy%160===UG.top%160)ctx.fillText('−'+Math.round((wy-UG.top)*M_PER_UNIT), w-64, y+3); }
     ctx.restore();
-    // 根系
+    // 根系：一条粗主根贯下去（主脉络），侧根越分越细
     G.plants.forEach(p=>{
       const x=p.fx*w;
       ctx.save(); ctx.translate(x,0); ctx.globalAlpha=(.5+.5*p.rootT)*(1-p.grayV*.4);
+      ctx.lineCap='round';
       p.rootSegs.forEach(sg=>{
-        ctx.strokeStyle=mixHex('#9A7F55','#5C4830',sg.d/7);
-        ctx.lineWidth=Math.max(.6,(2.8-sg.d*.4)*p.rs); ctx.lineCap='round';
+        if(sg.main){   // 主根：深褐，越往下越暗，压在浅色土层上才看得见
+          ctx.strokeStyle=mixHex('#6B5030','#3A2C1B',sg.t);
+          ctx.lineWidth=Math.max(1.8,(7.4-sg.t*3.9)*p.rs*(0.8+(p.vig||1)*0.2));
+        } else {
+          ctx.strokeStyle=mixHex('#7E6238','#4A3A26',Math.min(1,sg.d/5));
+          ctx.lineWidth=Math.max(.8,(3.4-sg.d*.52)*p.rs);
+        }
         ctx.beginPath(); ctx.moveTo(sg.x,gy(sg.y)); ctx.lineTo(sg.x2,gy(sg.y2)); ctx.stroke(); });
+      // 主根上的高光，让粗根有体积
+      ctx.strokeStyle='rgba(250,238,208,.34)'; ctx.lineWidth=Math.max(.9,1.7*p.rs);
+      p.rootSegs.forEach(sg=>{ if(!sg.main)return;
+        ctx.beginPath(); ctx.moveTo(sg.x-.8,gy(sg.y)); ctx.lineTo(sg.x2-.8,gy(sg.y2)); ctx.stroke(); });
       ctx.restore(); ctx.globalAlpha=1;
-      // 根 → 网关电缆
-      const r=G.routers[p.router], rx=r.fx*w;
-      ctx.strokeStyle='rgba(130,108,76,.45)'; ctx.lineWidth=1.2;
-      ctx.beginPath(); ctx.moveTo(x,gy(UG.layers[1].y-24));
-      ctx.bezierCurveTo(x,gy(UG.layers[1].y+20), rx,gy(UG.routeY-44), rx,gy(UG.routeY-r.h/2)); ctx.stroke();
+      // 主根末端 → 采集端口的接线
+      const port=G.net[0].nodes[p.port||0];
+      if(port&&p.rootTip){
+        const tipX=x+p.rootTip[0], tipY=gy(p.rootTip[1]);
+        const px2=port.fx*w, py2=gy(port.y)-port.h/2;
+        ctx.strokeStyle=G.sel===p?'rgba(168,246,214,.95)':'rgba(150,210,180,.5)';
+        ctx.lineWidth=G.sel===p?2.2:1.4;
+        ctx.beginPath(); ctx.moveTo(tipX,tipY);
+        ctx.bezierCurveTo(tipX,tipY+(py2-tipY)*.55, px2,py2-(py2-tipY)*.55, px2,py2); ctx.stroke();
+      }
     });
-    // 交换总线
-    const busY=gy(UG.busY);
-    if(busY>-40&&busY<h+40){
-      ctx.strokeStyle='rgba(191,166,124,.7)'; ctx.lineWidth=2.6;
-      ctx.beginPath(); ctx.moveTo(16,busY); ctx.lineTo(w-16,busY); ctx.stroke();
-      ctx.strokeStyle='rgba(130,108,76,.5)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(16,busY+5); ctx.lineTo(w-16,busY+5); ctx.stroke();
-      ctx.fillStyle='rgba(206,190,158,.7)';
-      for(let x=40;x<w-30;x+=88) ctx.fillRect(x,busY-3,5,6);
-      // 机架/网关/算力核 → 总线（带端子）
-      ctx.strokeStyle='rgba(166,142,104,.55)'; ctx.lineWidth=1.4;
-      [...G.racks,...G.gpus,...G.routers].forEach(n=>{ const x=n.fx*w, ny=gy(n.y);
-        ctx.beginPath(); ctx.moveTo(x,ny); ctx.lineTo(x,busY); ctx.stroke();
-        ctx.fillStyle='rgba(206,190,158,.5)'; ctx.fillRect(x-2.5,busY-2.5,5,5); });
-      // 网关之间的骨干互联
-      ctx.strokeStyle='rgba(166,142,104,.3)'; ctx.setLineDash([3,7]); ctx.lineWidth=1.2;
-      for(let i=1;i<G.routers.length;i++){ ctx.beginPath();
-        ctx.moveTo(G.routers[i-1].fx*w,gy(G.routers[i-1].y));
-        ctx.lineTo(G.routers[i].fx*w,gy(G.routers[i].y)); ctx.stroke(); }
-      ctx.setLineDash([]);
-    }
+    // 层间连边：成束的曲线，权重决定粗细；被注视的通路亮起
+    ctx.lineCap='round';
+    G.edges.forEach(e=>{
+      const a=netNode(e.li,e.ai), b=netNode(e.li+1,e.bi);
+      const ay=gy(a.y), by=gy(b.y);
+      if((ay<-60&&by<-60)||(ay>h+60&&by>h+60))return;
+      const ax=a.fx*w, bx=b.fx*w;
+      const y0=ay+a.h/2, y1=by-b.h/2, d=(y1-y0)*.55;
+      const flow=Math.min(1,(a.load+b.load)*.5+e.hot*.6);
+      ctx.strokeStyle=e.hot>.05
+        ? `rgba(168,246,214,${(.45+.5*e.hot).toFixed(3)})`
+        : `rgba(126,206,186,${(.17+.40*e.w*flow).toFixed(3)})`;
+      ctx.lineWidth=Math.max(.8,(e.hot>.05?2.6:1.7)*e.w);
+      ctx.beginPath(); ctx.moveTo(ax,y0);
+      ctx.bezierCurveTo(ax,y0+d, bx,y1-d, bx,y1); ctx.stroke();
+      // 边上缓慢流动的一粒 —— 这张网从不静止
+      if(e.w>.5&&flow>.10){
+        const t2=((G.t*.16+e.ph)%1), u=1-t2;
+        const qx=u*u*u*ax+3*u*u*t2*ax+3*u*t2*t2*bx+t2*t2*t2*bx;
+        const qy=u*u*u*y0+3*u*u*t2*(y0+d)+3*u*t2*t2*(y1-d)+t2*t2*t2*y1;
+        ctx.fillStyle=`rgba(180,250,220,${(.34+.5*e.hot).toFixed(3)})`;
+        ctx.fillRect(qx-1.4,qy-1.4,2.8,2.8);
+      }
+    });
+    // 同层横向骨干（虚线），像机柜排之间的互联
+    G.net.forEach((L,li)=>{ if(li===0)return;
+      const y=gy(L.y); if(y<-40||y>h+40)return;
+      ctx.strokeStyle='rgba(196,180,146,.34)'; ctx.setLineDash([3,7]); ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(L.nodes[0].fx*w, gy(L.nodes[0].y));
+      L.nodes.forEach(n=>ctx.lineTo(n.fx*w, gy(n.y)));
+      ctx.stroke(); ctx.setLineDash([]);
+    });
     allNodes().forEach(nd=>drawNode(ctx,nd,w));
-    // 变电 → 算力核 供电干线
-    const sy=gy(UG.subY), sx=G.sub.fx*w;
-    ctx.strokeStyle='rgba(217,108,74,.32)'; ctx.lineWidth=1.3;
-    G.gpus.forEach(g=>{ const gx=g.fx*w;
-      ctx.beginPath(); ctx.moveTo(sx,sy-G.sub.h/2); ctx.lineTo(sx,gy(UG.subY-40));
-      ctx.lineTo(gx,gy(UG.subY-40)); ctx.lineTo(gx,gy(UG.gpuY)+g.h/2); ctx.stroke(); });
-    // 液冷环路
+    // 液冷环路：贴着供电层底下走
     const py=gy(UG.pipeY);
     if(py>-40&&py<h+40){
-      ctx.strokeStyle='rgba(79,160,150,.55)'; ctx.lineWidth=1.5;
+      ctx.strokeStyle='rgba(79,160,150,.5)'; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.moveTo(16,py-4); ctx.lineTo(w-16,py-4); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(16,py+4); ctx.lineTo(w-16,py+4); ctx.stroke();
       ctx.fillStyle='#4FA096';
       for(let k=0;k<14;k++){ const dx=((G.t*44+k*92)%(w+60))-30; ctx.fillRect(dx,py-2,6,4); }
-      ctx.save(); ctx.translate(w-40,py); ctx.rotate(G.t*2.6);
-      ctx.strokeStyle='rgba(79,160,150,.8)'; ctx.lineWidth=1.6;
-      for(let k=0;k<3;k++){ ctx.rotate(Math.PI*2/3);
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(9,0); ctx.stroke(); }
-      ctx.restore();
-      ctx.beginPath(); ctx.strokeStyle='rgba(79,160,150,.8)'; ctx.lineWidth=1;
-      ctx.arc(w-40,py,11,0,7); ctx.stroke();
+      G.net[4].nodes.forEach(n=>{ const nx=n.fx*w;
+        ctx.strokeStyle='rgba(79,160,150,.35)'; ctx.lineWidth=1.1;
+        ctx.beginPath(); ctx.moveTo(nx,gy(n.y)+n.h/2); ctx.lineTo(nx,py-4); ctx.stroke(); });
     }
     // 脉冲
     G.pulses.forEach(pl=>{ const pts=pulsePts(pl,w); if(!pts)return;
@@ -2366,6 +2619,43 @@ $('popReset').onclick=()=>{ Object.assign(TUNE,TUNE_DEF); saveTune(); buildTuneR
   toast(tt('生态参数已恢复默认','ecology parameters reset')); };
 buildTuneRows();
 
+/* 数据来源：台面上每个数字都能追到出处；无实测的也如实写明 */
+const SRC_ROWS=[
+  ['luccioni24', ()=>tt(
+    `图像生成能耗 ${DATA.imgWh.lo}–${DATA.imgWh.hi} Wh／张（均值 ${DATA.imgWh.mid} Wh，约为文本生成 ${DATA.txtWh.mid} Wh 的 60 倍）。作品里所有「生成能耗」都引自这里。`,
+    `Image generation: ${DATA.imgWh.lo}–${DATA.imgWh.hi} Wh per image (mean ${DATA.imgWh.mid} Wh, ~60× the ${DATA.txtWh.mid} Wh of text generation). Every ENERGY figure in this work cites it.`)],
+  ['iea25', ()=>tt(
+    `电网碳强度 ${DATA.gridG.v} gCO₂/kWh（2024 全球均值），用于把能耗折算成碳排；数据中心用电 ${DATA.dc24.v} TWh（2024，约占全球 1.5%）→ 预计 ${DATA.dc30.v} TWh（2030，约 3%）。`,
+    `Grid carbon intensity ${DATA.gridG.v} gCO₂/kWh (2024 global mean), used to convert energy to CO₂e; data-centre electricity ${DATA.dc24.v} TWh (2024, ~1.5% of global) → ~${DATA.dc30.v} TWh (2030, ~3%).`)],
+  ['li23', ()=>tt(
+    `用水：一次中等长度回应约合 500 ml／${DATA.water.lo}–${DATA.water.hi} 次；训练 GPT-3 在微软美国数据中心约耗水 ${DATA.gpt3Water.v} 百万升。地下「用水」一行按此换算。`,
+    `Water: roughly a 500 ml bottle per ${DATA.water.lo}–${DATA.water.hi} medium-length responses; training GPT-3 in Microsoft's US datacentres consumed ~${DATA.gpt3Water.v} million litres. The WATER row is derived from this.`)],
+  ['civitai', ()=>tt(
+    '花心的画作、点赞与评论数、生成模型、提示词均为实采；植株的体格由真实点赞数（对数换算）决定 —— 长得大的花，是真的被更多人看过。',
+    'Flower images, like/comment counts, model names and prompts are really crawled; each plant’s vigour is scaled from its real like count (log-scaled) — the big flowers really were seen by more people.')],
+  ['crawford18', ()=>tt(
+    '方法论谱系：把一件消费品拆回矿藏、电力与人力的剖面图。本作地下五层的分层剖面借鉴其结构。',
+    'Lineage: the exploded cross-section that traces a consumer device back to minerals, energy and labour. The five strata below this garden borrow that structure.')],
+  ['brain', ()=>tt(
+    '方法论谱系：把生态系统与计算基础设施并置、让作品真的跑在那套基础设施上（Solar Protocol 按日照在全球太阳能服务器间路由）。',
+    'Lineage: placing ecosystems and computational infrastructure in one frame, and running the work on that infrastructure (Solar Protocol routes between solar-powered servers by sunlight).')]
+];
+function buildSrc(){
+  $('srcTitle').textContent=tt('数据来源 DATA SOURCES','DATA SOURCES');
+  $('srcIntro').textContent=tt(
+    '这件作品谈算力的代价，所以台面上的数字不该是编的。以下是全部出处。有一处必须讲明：视频与多模态生成至今没有可比的公开实测，档案里如实标为「示意」—— 测不到本身，也是作品要说的事。',
+    'This work is about the cost of computation, so its numbers should not be invented. All sources are below. One caveat stated plainly: there is still no comparable public measurement for video or multimodal generation, so those rows are labelled ILLUS. — the unmeasurability is itself part of the argument.');
+  $('srcList').innerHTML=SRC_ROWS.map(([k,txt])=>{
+    const c=CITE[k];
+    return `<div class="srcRow"><b>${c.k}</b><span>${tt(c.zh,c.en)}</span>`
+      +`<em>${txt()}</em><a href="${c.u}" target="_blank" rel="noopener">${c.u}</a></div>`;
+  }).join('');
+}
+$('popSrc').onclick=()=>{ buildSrc(); $('srcWrap').classList.add('on'); closeSet(); };
+$('srcClose').onclick=()=>$('srcWrap').classList.remove('on');
+$('srcWrap').addEventListener('pointerdown',e=>{ if(e.target===$('srcWrap'))$('srcWrap').classList.remove('on'); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape')$('srcWrap').classList.remove('on'); });
+
 /* ============================================================
    悬停档案（注视到什么就展开什么 —— 算法注视时同样生效）
    ============================================================ */
@@ -2404,7 +2694,7 @@ function refreshCardG(){ const p=G.sel; if(!p)return;
     :(p.state==='dormant'?tt('休眠 DORMANT','dormant')
     :(p.wilt>0.15?tt('缺乏注意力 WILTING','wilting · starved of attention')
     :(tr&&tr.on?tt('群落成员 · 潮流中','colony member · trending'):tt('健康 HEALTHY','healthy'))));
-  const a=p.art, [ev,esrc]=energyRow(p.type,a.real);
+  const a=p.art, [ev,esrc]=energyRow(p.type);
   const R=[
     [bi('物种','SPECIES'), `<i class="swatch" style="background:${sp.c0}"></i>${tt(sp.zh+' '+sp.en,sp.en)}`],
     [bi('作品','WORK'), a.title]
@@ -2432,21 +2722,36 @@ function refreshCardN(){ const nd=G.selNode; if(!nd)return;
   let L=UG.layers[0];
   UG.layers.forEach(l=>{ if(nd.y>=l.y)L=l; });
   const KV={
-    route:[[bi('职能','ROLE'),tt('行为信号路由 · 请求分发','signal routing · request dispatch')],
+    capture:[[bi('职能','ROLE'),tt('行为信号采集 · 曝光／停留／点击','behavioural capture · impression, dwell, click')],
+             [bi('接入植株','PLANTS'),G.plants.filter(q=>q.port===nd.i).length],
+             [bi('事件','EVENTS'),nd.count],
+             [bi('说明','NOTE'),tt('注视先成为数据，才成为养分','gaze becomes data before it becomes nutrient'),'col']],
+    route:[[bi('职能','ROLE'),tt('信号路由 · 请求分发','signal routing · request dispatch')],
            [bi('吞吐','THROUGHPUT'),nd.count+' req'],
-           [bi('延迟','LATENCY'),(2+Math.sin(G.t)*.6).toFixed(1)+' ms'],[bi('功率','POWER'),'6 W']],
-    rack:[[bi('职能','ROLE'),tt('数据集存储 · 缓存排序','dataset storage · cache & ranking')],
+           [bi('延迟','LATENCY'),(2+Math.sin(G.t)*.6).toFixed(1)+' ms'],
+           [bi('出边','OUT-EDGES'),(G.outEdges[1][nd.i]||[]).length]],
+    rank:[[bi('职能','ROLE'),tt('数据集存储 · 缓存与排序','dataset storage · cache & ranking')],
           [bi('读写','IO'),nd.count+' blk'],
-          [bi('命中率','HIT'),(82+Math.sin(G.t*.7)*6).toFixed(0)+' %'],[bi('功率','POWER'),'16 W']],
+          [bi('命中率','HIT'),(82+Math.sin(G.t*.7)*6).toFixed(0)+' %'],
+          [bi('出边','OUT-EDGES'),(G.outEdges[2][nd.i]||[]).length]],
     gpu:[[bi('职能','ROLE'),tt('模型推理 · 生成计算','model inference · generation')],
-         [bi('批次','BATCH'),nd.count+tt(' 次','')],
-         [bi('显存','VRAM'),(nd.load*80).toFixed(1)+' / 80 GB'],[bi('温度','TEMP'),(52+nd.load*28).toFixed(0)+' °C'],
-         [bi('冷却','COOLING'),tt('液冷环路 · 在线','liquid loop · online')],
+         [bi('批次','BATCH'),nd.count],
+         [bi('显存','VRAM'),(nd.load*80).toFixed(1)+' / 80 GB'],
+         [bi('温度','TEMP'),(52+nd.load*28).toFixed(0)+' °C'],
+         [bi('单张能耗','PER IMAGE'),
+          `${DATA.imgWh.lo}–${DATA.imgWh.hi} Wh <span style="opacity:.45">${CITE.luccioni24.k}</span>`],
          [bi('功率','POWER'),(90+nd.load*170).toFixed(0)+' W']],
-    sub:[[bi('职能','ROLE'),tt('变电 · 能源供给','substation · power supply')],
-         [bi('电网','GRID'),'GRID·A'],
-         [bi('实时功率','POWER'),S.power.toFixed(0)+' W'],[bi('累计能耗','TOTAL'),S.energy.toFixed(1)+' Wh'],
-         [bi('碳排估算','CO₂e'),(S.energy*0.42).toFixed(1)+' g']]
+    power:[[bi('职能','ROLE'),tt('变电 · 液冷 · 能源供给','substation · liquid cooling · supply')],
+         [bi('实时功率','POWER'),S.power.toFixed(0)+' W'],
+         [bi('累计能耗','TOTAL'),S.energy.toFixed(1)+' Wh'],
+         [bi('碳排','CO₂e'),
+          `${co2g(S.energy).toFixed(1)} g <span style="opacity:.45">${CITE.iea25.k}</span>`],
+         [bi('电网强度','GRID'),
+          `${DATA.gridG.v} gCO₂/kWh <span style="opacity:.45">${CITE.iea25.k}</span>`],
+         [bi('用水','WATER'),
+          `≈ ${(waterMl(S.energy)/1000).toFixed(2)} L <span style="opacity:.45">${CITE.li23.k}</span>`],
+         [bi('数据中心','DATA CENTRES'),
+          `${DATA.dc24.v} TWh (2024) → ${DATA.dc30.v} TWh (2030) <span style="opacity:.45">${CITE.iea25.k}</span>`,'col']]
   }[nd.kind]||[];
   rows($('cnRows'),[[bi('层位','LAYER'),tt(L.zh+' '+L.en,L.en)],
                     [bi('负载','LOAD'),(nd.load*100).toFixed(0)+' %'],...KV]);
