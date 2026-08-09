@@ -284,6 +284,8 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
       <button class="popItem" id="popUpload">＋ 载入图片 IMAGES</button>
       <input type="file" id="fileIn" accept="image/*" multiple hidden>
       <div id="imgGrid"></div>
+      <button class="popItem" id="popBg">▣ 背景图片 BACKDROP</button>
+      <input type="file" id="bgIn" accept="image/*" hidden>
       <div class="popSep" id="popThemeT">背景 BACKGROUND</div>
       <div id="themeRows"></div>
       <button class="popItem" id="popSrc">◇ 数据来源 SOURCES</button>
@@ -512,18 +514,6 @@ const THEMES={
     net:'150,150,150', netHot:'250,250,250',
     root:['#3A3A3A','#1E1E1E','#555555','#2C2C2C'] },
 
-  pixelwood:{ zh:'像素林', en:'PIXEL WOOD', dark:false, sun:false, mono:false, deco:'canopy',
-    paper:'#F1F4EE', sky:['#E2EEE6','#F0F2E4','#F8FAF4'],
-    dots:['rgba(120,150,124,.085)','rgba(140,146,132,.05)'],
-    cloud:'rgba(253,254,250,.94)', cloudSh:'rgba(150,178,156,.20)',
-    hills:[['rgba(110,150,104,.13)','rgba(110,150,104,.32)'],['rgba(150,170,120,.14)','rgba(120,140,90,.32)']],
-    field:['#E0E8D4','#D8DFC4','#CBD3AC'], contour:'rgba(120,140,96,.20)',
-    ridge:['#C5C39A','#BAB78C','#ADA97C','#9F9B6C'],
-    ridgeHi:'rgba(255,255,240,.36)', ridgeDot:'rgba(104,110,68,.32)',
-    soil:['#BFB584','#95905C','#5C5E36','#323522','#1D2016','#141610'], soilBot:'#101210',
-    net:'150,206,150', netHot:'196,250,196',
-    root:['#5E5A2E','#33301A','#726E38','#454226'] },
-
   deep:{ zh:'深夜', en:'DEEP', dark:true, sun:false, mono:false, deco:null,
     paper:'#12161A', sky:['#0E1418','#141C22','#1A2228'],
     dots:['rgba(140,190,200,.07)','rgba(120,150,170,.05)'],
@@ -585,21 +575,7 @@ const THEMES={
     soil:['#101E1C','#0C1817','#0A1413','#080F0F','#060B0B','#040808'], soilBot:'#030606',
     net:'120,240,210', netHot:'200,255,240',
     root:['#38584F','#1C2E2A','#48685E','#263834'],
-    auroraCols:['#5BE8C0','#4FA8E8','#A46BE0','#54E0A0'] },
-
-  /* 我自己配的一版：热成像 —— 用同色相叠加把整幅压成热力图 */
-  thermal:{ zh:'热成像', en:'THERMAL', dark:true, sun:false, mono:false, deco:null, clouds:false,
-    paper:'#07070C', sky:['#05050A','#08080F','#0C0C16'],
-    dots:['rgba(255,180,80,.06)','rgba(120,80,255,.05)'],
-    cloud:'rgba(40,30,60,.5)', cloudSh:'rgba(0,0,0,.5)',
-    hills:[['rgba(120,60,160,.18)','rgba(200,120,255,.28)'],['rgba(160,80,60,.20)','rgba(255,150,90,.30)']],
-    field:['#1A1226','#180F20','#150D1B'], contour:'rgba(255,170,120,.16)',
-    ridge:['#1E1428','#1A1123','#170F1E','#140D1A'],
-    ridgeHi:'rgba(255,200,140,.12)', ridgeDot:'rgba(255,150,90,.20)',
-    soil:['#1C1428','#221430','#3A1A34','#5A1E2E','#7A2420','#96300E'], soilBot:'#A8400A',
-    net:'255,190,110', netHot:'255,245,200',
-    root:['#5A3A50','#2E1C2E','#70485E','#3A2438'],
-    tint:['#2B2FA0','#7A3FB0','#E0603A','#FFC24A'] }
+    auroraCols:['#5BE8C0','#4FA8E8','#A46BE0','#54E0A0'] }
 };
 let THEME='paper';
 try{ THEME=localStorage.getItem('ag_theme')||'paper'; }catch(_){}
@@ -807,9 +783,45 @@ function addUserImages(files){
   if(n&&typeof G!=='undefined'&&G.drifters&&!G.drifters.length)seedDrifters();
   return n;
 }
+/* 背景图层：自备一张 PNG/JPG 垫进天空那一层，随相机做视差。
+   和内置的天空、半调网点、远山、田野叠在一起，不是替换而是嵌入。 */
+const BACKDROP={img:null, id:null};
+function setBackdrop(file){
+  if(!file)return;
+  const url=URL.createObjectURL(file), im=new Image();
+  im.onload=()=>URL.revokeObjectURL(url);
+  im.src=url;
+  BACKDROP.img=im;
+  idbRun('readwrite',st=>st.put({id:'backdrop', name:file.name, blob:file, kind:'bg'}))
+    .then(()=>{ BACKDROP.id='backdrop'; }).catch(()=>{});
+}
+function clearBackdrop(){
+  BACKDROP.img=null; BACKDROP.id=null;
+  idbRun('readwrite',st=>st.delete('backdrop')).catch(()=>{});
+}
+function drawBackdrop(ctx,w,h,horizonY){
+  const im=BACKDROP.img;
+  if(!im||!im.naturalWidth)return;
+  const iw=im.naturalWidth, ih=im.naturalHeight;
+  const band=Math.max(120,horizonY);            // 天空那一段
+  const sc=Math.max(w/iw, band/ih);             // cover：铺满且不变形
+  const dw=iw*sc, dh=ih*sc;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,w,Math.max(0,horizonY)); ctx.clip();
+  ctx.globalAlpha=.92;
+  ctx.drawImage(im,(w-dw)/2, horizonY-dh, dw, dh);
+  ctx.restore();
+}
 function loadUserImages(){
   return idbRun('readonly',st=>st.getAll()).then(rows=>{
-    (rows||[]).forEach(r=>USER_ART.push(makeUserArt(r.blob,r.name,r.id)));
+    (rows||[]).forEach(r=>{
+      if(r.kind==='bg'||r.id==='backdrop'){
+        const url=URL.createObjectURL(r.blob), im=new Image();
+        im.onload=()=>URL.revokeObjectURL(url); im.src=url;
+        BACKDROP.img=im; BACKDROP.id='backdrop'; return;
+      }
+      USER_ART.push(makeUserArt(r.blob,r.name,r.id));
+    });
     if(USER_ART.length&&typeof G!=='undefined')seedDrifters();
     return USER_ART.length;
   }).catch(()=>0);
@@ -1078,49 +1090,74 @@ function autoGazeTarget(){
   }
   return [R(cB._w*.2,cB._w*.8), R(cB._h*.2,cB._h*.8)];
 }
-/* ---- 注视 = 一簇随风飘的泡泡（也像眼动仪的聚焦落点） ---- */
-const BUBS=[];
-(function initBubs(){ for(let i=0;i<7;i++)
-  BUBS.push({a:i/7*Math.PI*2, rad:.34+Math.random()*.62, r:.13+Math.random()*.26,
-             sp:.20+Math.random()*.45, wob:.5+Math.random()*1.3, ph:Math.random()*7}); })();
-/* 返回当前所有泡泡的屏幕坐标与半径（供渲染与"点亮"遮罩共用） */
-function gazeBubbles(R){
-  const r0=(R||GAZE.r)*(TH.lit?1.45:1), t=perfNow()*.001, out=[{x:GAZE.x,y:GAZE.y,r:r0*.62,main:1}];
-  BUBS.forEach(b=>{
-    const a=b.a+t*b.sp*(b.a%2?1:-1);
-    const rad=r0*b.rad*(1+Math.sin(t*b.wob+b.ph)*.10);
-    out.push({x:GAZE.x+Math.cos(a)*rad,
-              y:GAZE.y+Math.sin(a)*rad*.86+Math.sin(t*.8+b.ph)*r0*.05,
-              r:r0*b.r*(1+Math.sin(t*1.3+b.ph)*.14), main:0});
-  });
-  return out;
+/* ============================================================
+   注视 = 一枚被吹出来的巨型气泡
+   ------------------------------------------------------------
+   整体始终是一个圆，但边界由几组不同频率的正弦波叠加而成，
+   像肥皂膜在空气里被托着走，一直在变形却不散架。
+   中心永远是那个看不见的指针。
+   ============================================================ */
+function gazeR(){ return GAZE.r*(TH.lit?1.02:0.86); }
+/* 气泡轮廓：低频大起伏 + 中频摆动 + 高频细纹，合成一条闭合曲线 */
+function bubblePath(ctx,x,y,r,t,grow){
+  const N=72, g=grow||1;
+  ctx.beginPath();
+  for(let i=0;i<=N;i++){
+    const a=i/N*Math.PI*2;
+    const w = Math.sin(a*2 + t*0.62)*0.062
+            + Math.sin(a*3 - t*0.47 + 1.7)*0.042
+            + Math.sin(a*5 + t*0.83 + 0.6)*0.021
+            + Math.sin(a*7 - t*0.31 + 2.4)*0.012;
+    const rr=r*g*(1+w);
+    const px=x+Math.cos(a)*rr;
+    const py=y+Math.sin(a)*rr*(1+Math.sin(t*0.4)*0.035);
+    i?ctx.lineTo(px,py):ctx.moveTo(px,py);
+  }
+  ctx.closePath();
 }
 function inGaze(sx,sy,pad){
-  const bs=gazeBubbles();
-  for(const b of bs){ const d=Math.hypot(sx-b.x,sy-b.y); if(d<b.r+(pad||0))return true; }
-  return false;
+  return Math.hypot(sx-GAZE.x,sy-GAZE.y) < gazeR()*0.95+(pad||0);
 }
-function drawGazeRing(ctx,x,y,r){
-  const auto=GAZE.mode==='auto';
+function drawGazeRing(ctx,x,y){
+  const auto=GAZE.mode==='auto', r=gazeR(), t=perfNow()*0.001;
   const col=auto?'110,147,174':'201,151,63';
   ctx.save();
-  gazeBubbles(r).forEach(b=>{
-    // 泡泡本体：极淡的填充 + 一圈薄膜 + 一点高光
-    ctx.fillStyle=`rgba(${col},${b.main?.045:.03})`;
-    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,7); ctx.fill();
-    ctx.strokeStyle=`rgba(${col},${b.main?(auto?.42:.55):.30})`;
-    ctx.lineWidth=b.main?1.1:.9;
-    if(b.main){ ctx.setLineDash(auto?[2,6]:[5,5]);
-      ctx.lineDashOffset=auto?-perfNow()*.012:0; }
-    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,7); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle=`rgba(255,255,255,${b.main?.22:.34})`;   // 泡膜高光弧
-    ctx.lineWidth=.9;
-    ctx.beginPath(); ctx.arc(b.x,b.y,b.r*.74,Math.PI*1.05,Math.PI*1.55); ctx.stroke();
-  });
-  // 聚焦十字：眼动仪的落点
-  ctx.strokeStyle=`rgba(${col},.5)`; ctx.lineWidth=1; ctx.beginPath();
-  ctx.moveTo(x-5,y); ctx.lineTo(x+5,y); ctx.moveTo(x,y-5); ctx.lineTo(x,y+5); ctx.stroke();
+  // 膜内极淡的一层，让泡泡有体积而不是一个线框
+  bubblePath(ctx,x,y,r,t);
+  const gf=ctx.createRadialGradient(x-r*.22,y-r*.26,r*.05,x,y,r);
+  gf.addColorStop(0,`rgba(255,255,255,${auto?.045:.065})`);
+  gf.addColorStop(.72,`rgba(${col},.030)`);
+  gf.addColorStop(1,`rgba(${col},.075)`);
+  ctx.fillStyle=gf; ctx.fill();
+  // 膜：沿圆周走一圈的虹彩描边
+  const gs=ctx.createLinearGradient(x-r,y-r,x+r,y+r);
+  gs.addColorStop(0,   `rgba(150,220,255,${auto?.30:.40})`);
+  gs.addColorStop(.28, `rgba(255,235,190,${auto?.24:.34})`);
+  gs.addColorStop(.55, `rgba(${col},${auto?.42:.58})`);
+  gs.addColorStop(.78, `rgba(210,180,255,${auto?.24:.32})`);
+  gs.addColorStop(1,   `rgba(160,255,225,${auto?.28:.36})`);
+  ctx.strokeStyle=gs; ctx.lineWidth=1.6;
+  bubblePath(ctx,x,y,r,t); ctx.stroke();
+  // 外面再套一层更淡更慢的膜，吹大的泡才有那种双层感
+  ctx.strokeStyle=`rgba(${col},${auto?.10:.16})`; ctx.lineWidth=1;
+  bubblePath(ctx,x,y,r,t*0.62+1.9,1.045); ctx.stroke();
+  // 高光：一段沿膜滑动的弧 + 一小点反光
+  ctx.strokeStyle=`rgba(255,255,255,${auto?.26:.38})`; ctx.lineWidth=2.1;
+  ctx.lineCap='round';
+  const ha=-2.35+Math.sin(t*0.33)*0.30;
+  ctx.beginPath(); ctx.arc(x,y,r*0.80,ha,ha+0.62); ctx.stroke();
+  ctx.strokeStyle=`rgba(255,255,255,${auto?.16:.24})`; ctx.lineWidth=1.3;
+  const hb=0.75+Math.sin(t*0.27+1.2)*0.24;
+  ctx.beginPath(); ctx.arc(x,y,r*0.86,hb,hb+0.30); ctx.stroke();
+  ctx.fillStyle=`rgba(255,255,255,${auto?.24:.34})`;
+  ctx.beginPath();
+  ctx.ellipse(x-r*.40+Math.sin(t*.5)*r*.05, y-r*.44+Math.cos(t*.42)*r*.04,
+              r*.085, r*.055, -0.6, 0, 7);
+  ctx.fill();
+  // 中心那个看不见的指针，只留最小的一个记号
+  ctx.strokeStyle=`rgba(${col},.42)`; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(x-4,y); ctx.lineTo(x+4,y); ctx.moveTo(x,y-4); ctx.lineTo(x,y+4); ctx.stroke();
   ctx.restore();
 }
 
@@ -1136,26 +1173,20 @@ function postFX(ctx,cv){
     oc.filter='grayscale(1) brightness(.66) contrast(1.06)';
     oc.drawImage(cv,0,0);
     oc.filter='none';
-    oc.globalCompositeOperation='destination-out';    // 泡泡处挖空 → 露出彩色原图
-    gazeBubbles().forEach(b=>{
-      const R2=b.r*1.28*d, X=b.x*d, Y=b.y*d;
-      const g=oc.createRadialGradient(X,Y,0,X,Y,R2);
-      g.addColorStop(0,'rgba(0,0,0,1)');
-      g.addColorStop(.68,'rgba(0,0,0,.94)');
-      g.addColorStop(1,'rgba(0,0,0,0)');
-      oc.fillStyle=g; oc.beginPath(); oc.arc(X,Y,R2,0,7); oc.fill();
-    });
+    oc.globalCompositeOperation='destination-out';   // 气泡内挖空 → 露出彩色原图
+    oc.save(); oc.setTransform(d,0,0,d,0,0);
+    oc.filter='blur(10px)';
+    oc.fillStyle='#000';
+    bubblePath(oc,GAZE.x,GAZE.y,gazeR()*1.06,perfNow()*0.001);
+    oc.fill();
+    oc.filter='none';
+    bubblePath(oc,GAZE.x,GAZE.y,gazeR()*0.86,perfNow()*0.001);
+    oc.fill();
+    oc.restore();
     oc.globalCompositeOperation='source-over';
     ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(FXC,0,0); ctx.restore();
   }
-  if(TH.tint){
-    ctx.save(); ctx.setTransform(1,0,0,1,0,0);
-    ctx.globalCompositeOperation='color';
-    const g=ctx.createLinearGradient(0,0,0,cv.height);
-    TH.tint.forEach((c,i)=>g.addColorStop(i/(TH.tint.length-1),c));
-    ctx.fillStyle=g; ctx.fillRect(0,0,cv.width,cv.height);
-    ctx.restore();
-  }
+
 }
 
 /* ============================================================
@@ -1387,7 +1418,7 @@ function renderBloom(){
   });
   ctx.restore();
 
-  drawGazeRing(ctx,GAZE.x,GAZE.y,GAZE.r);
+  drawGazeRing(ctx,GAZE.x,GAZE.y);
   postFX(ctx,cB);
 }
 
@@ -1584,17 +1615,7 @@ const SKY_SPR=[
 function rebuildDeco(){
   G.deco=[];
   const rnd=sRand(778811);
-  if(TH.deco==='trees'){
-    // 地平线上的一排像素树：远近两层，越远越小越淡
-    for(let i=0;i<34;i++){ const far=rnd()<.45;
-      G.deco.push({fx:rnd(), wy:(far?-150:-128)-rnd()*26,
-        h:far?4+Math.floor(rnd()*3):6+Math.floor(rnd()*4),
-        px:far?2.2+rnd()*1.2:3.4+rnd()*2.2,
-        f:far?.20:.34, a:far?.24:.40}); }
-  } else if(TH.deco==='canopy'){
-    for(let i=0;i<7;i++) G.deco.push({kind:'branch', t:.18+i*.115+rnd()*.05,
-      len:.30+rnd()*.62, rise:rnd()*90-20, wd:3+rnd()*7, px:3+rnd()*2.6, ph:rnd()*7});
-  } else if(TH.deco==='aurora'){
+  if(TH.deco==='aurora'){
     for(let i=0;i<5;i++) G.deco.push({kind:'veil', fx:rnd(), sp:.004+rnd()*.010,
       wd:70+rnd()*160, amp:26+rnd()*54, a:.10+rnd()*.16, ci:i, ph:rnd()*7});
     for(let i=0;i<70;i++) G.deco.push({kind:'ray', fx:rnd(), wy:-60-rnd()*460,
@@ -2667,6 +2688,7 @@ function renderGarden(){
   sky.addColorStop(0,mixHex(TH.sky[0],TH.sky[1],day));
   sky.addColorStop(1,TH.sky[2]);
   ctx.fillStyle=sky; ctx.fillRect(0,0,w,h);
+  drawBackdrop(ctx,w,h,Math.min(fieldTop,h));      // 自备背景图垫在这一层
   if(fieldTop>0) halftoneFill(ctx,0,0,w,Math.min(fieldTop,h));
   if(TH.sun){ // 太阳：平涂圆盘 + 半调点环
     const sx=w*.78, sy=gyP(-380,.10);
@@ -2699,31 +2721,6 @@ function renderGarden(){
     ctx.lineTo(w,gyP(bw+400,f)); ctx.lineTo(0,gyP(bw+400,f)); ctx.closePath();
     ctx.fillStyle=fill; ctx.fill(); });
   // 主题装置：像素林（远景剪影）／数据瀑布（下落的字符流）
-  if(TH.deco==='canopy'){
-    // 一株巨树的枝干：从画面右下伸出，枝条横过天空，人在树下看花园
-    const bx=w*0.97, by=gyP(-24,.30), tk=w*.075;
-    ctx.globalAlpha=.42; ctx.fillStyle=thc('#46543A'); ctx.strokeStyle=thc('#46543A');
-    ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(bx+tk,by);
-    ctx.bezierCurveTo(bx-tk*.4,by-h*.42, bx-tk*1.2,by-h*.72, bx-tk*2.2,by-h*1.02);
-    ctx.lineTo(bx-tk*.5,by-h*1.02); ctx.bezierCurveTo(bx+tk*.6,by-h*.70, bx+tk*1.5,by-h*.40, bx+tk*2.4,by);
-    ctx.closePath(); ctx.fill();
-    G.deco.forEach(br=>{ if(br.kind!=='branch')return;
-      ctx.lineWidth=br.wd*1.9;
-      ctx.beginPath(); ctx.moveTo(bx-tk*(.4+br.t*1.4), by-h*br.t);
-      ctx.bezierCurveTo(bx-w*br.len*.35, by-h*br.t-br.rise*.4,
-                        bx-w*br.len*.72, by-h*br.t-br.rise*.9,
-                        bx-w*br.len,     by-h*br.t-br.rise);
-      ctx.stroke();
-      // 枝头的像素叶簇
-      const lx=bx-w*br.len, ly=by-h*br.t-br.rise, px=br.px*1.5;
-      for(let r=-2;r<=2;r++)for(let c2=-3;c2<=3;c2++){
-        if(Math.abs(r)+Math.abs(c2)>4)continue;
-        if((r+c2+(br.ph|0))%3===0)continue;
-        ctx.fillRect(lx+c2*px, ly+r*px, px-.5, px-.5); }
-    });
-    ctx.globalAlpha=1;
-  }
   if(TH.deco==='aurora'){
     // 极光带：几道竖向光幕，边缘用正弦扰动，缓慢横移
     const cols=TH.auroraCols||['#5BE8C0','#4FA8E8'];
@@ -2757,23 +2754,8 @@ function renderGarden(){
     });
     ctx.globalAlpha=1;
   }
-  if(TH.deco==='trees'){
-    G.deco.forEach(t2=>{
-      const x=Math.round(t2.fx*w), base=gyP(t2.wy,t2.f), px=t2.px;
-      if(base<-60||base>h+60)return;
-      ctx.globalAlpha=t2.a;
-      ctx.fillStyle=thc('#5E7E4E');
-      for(let r=0;r<t2.h;r++){                       // 一格一格垒出的塔形树冠
-        const half=Math.max(0,Math.round((t2.h-r-1)*.75));
-        for(let c2=-half;c2<=half;c2++){
-          if(r===t2.h-1&&Math.abs(c2)>0)continue;
-          ctx.fillRect(x+c2*px, base-(r+2.4)*px, px-.35, px-.35); }
-      }
-      ctx.fillStyle=thc('#6B5236');
-      ctx.fillRect(x-px*.5, base-px*2.4, px, px*2.4);
-      ctx.globalAlpha=1;
-    });
-  } else if(TH.deco==='fall'){
+  if(false){
+} else if(TH.deco==='fall'){
     G.deco.forEach(d2=>{
       const x=Math.round(d2.fx*w/d2.px)*d2.px;
       const y0=gyP(d2.wy+((G.t*d2.sp)%620),.5);
@@ -3057,7 +3039,7 @@ function renderGarden(){
     ctx.fillStyle='#7A5A3A'; ctx.fillRect(-2.5,-1.5,5,3); ctx.restore(); });
   G.flies.forEach(f=>{ const y=gy(f.wy); if(y>-30&&y<h+30)drawButterfly(ctx,f,y); });
 
-  drawGazeRing(ctx,GAZE.x,GAZE.y,GAZE.r*.7);
+  drawGazeRing(ctx,GAZE.x,GAZE.y);
   postFX(ctx,cG);
 }
 
@@ -3108,7 +3090,7 @@ btnSet.onclick=e=>{ e.stopPropagation();
 document.addEventListener('pointerdown',e=>{ if(!$('setWrap').contains(e.target))closeSet(); });
 $('popReseed').onclick=()=>{ reseedGarden(); closeSet();
   toast(tt('花园已重播 —— 新的一园','the garden has been reseeded')); };
-$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); buildThemeRows(); buildImgGrid(); closeSet();
+$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); buildThemeRows(); buildImgGrid(); syncBgLabel(); closeSet();
   toast(tt('语言：中文','Language: English')); };
 
 /* 生态参数滑杆：改的就是这件作品的生态法则，即时生效并记住 */
@@ -3211,6 +3193,21 @@ $('fileIn').onchange=e=>{
   if(n) toast(tt(`已载入 ${n} 张 · 它们会长成花，也会飞过天空（已存在本机，刷新还在）`,
                  `${n} loaded · they grow into flowers and drift across the sky (saved locally)`));
 };
+$('popBg').onclick=()=>{
+  if(BACKDROP.img){ clearBackdrop(); syncBgLabel();
+    toast(tt('已移除背景图片','backdrop removed')); }
+  else $('bgIn').click();
+};
+$('bgIn').onchange=e=>{ const f=e.target.files&&e.target.files[0];
+  if(f){ setBackdrop(f); syncBgLabel();
+    toast(tt('背景图片已嵌入天空层 · 再点一次可移除','backdrop embedded · click again to remove')); }
+  e.target.value=''; };
+function syncBgLabel(){
+  $('popBg').textContent = BACKDROP.img
+    ? tt('▣ 移除背景图片 BACKDROP','▣ REMOVE BACKDROP')
+    : tt('▣ 背景图片 BACKDROP','▣ BACKDROP');
+}
+
 /* 已载入图片：看得见、删得掉 */
 function buildImgGrid(){
   const box=$('imgGrid'); box.innerHTML='';
@@ -3233,7 +3230,7 @@ function buildImgGrid(){
     toast(tt('已清空载入的图片','loaded images cleared')); };
   box.appendChild(c);
 }
-loadUserImages().then(n=>{ buildImgGrid();
+loadUserImages().then(n=>{ buildImgGrid(); syncBgLabel();
   if(n) toast(tt(`本机已存 ${n} 张图片 · 已载入`,`${n} stored image(s) restored`)); });
 
 $('popSrc').onclick=()=>{ buildSrc(); $('srcWrap').classList.add('on'); closeSet(); };
