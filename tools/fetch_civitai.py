@@ -64,6 +64,15 @@ def http_json(url, api_key=None, tries=4, verbose=False):
                 return None
         except Exception as e:
             print(f"    {type(e).__name__}: {e}", flush=True)
+            if "refused" in str(e).lower() and i == 0:
+                px = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+                if px:
+                    print(f"      ⇒ 你设了代理 {px}，但那个端口上没有程序在监听。", flush=True)
+                    print(f"        要么启动代理软件、把端口改对，要么直接取消代理：", flush=True)
+                    print(f"        unset HTTPS_PROXY HTTP_PROXY", flush=True)
+                else:
+                    print("      ⇒ 连接被拒绝，检查网络是否可达 civitai.com", flush=True)
+                return None
         time.sleep(2 * (i + 1))
     return None
 
