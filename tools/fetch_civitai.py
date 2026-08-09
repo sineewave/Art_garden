@@ -73,18 +73,38 @@ def shrink_url(url, width=512):
     return url
 
 
-def download(url, path, tries=3):
+def download(url, path, tries=3, max_bytes=None):
+    """流式下载；超过 max_bytes 立即中止并放弃这一条（防止个别大视频吃掉带宽）。"""
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=90) as r, open(path, "wb") as f:
-                f.write(r.read())
+                got = 0
+                while True:
+                    chunk = r.read(1 << 18)
+                    if not chunk:
+                        break
+                    got += len(chunk)
+                    if max_bytes and got > max_bytes:
+                        raise ValueError("oversize")
+                    f.write(chunk)
             return os.path.getsize(path) > 512
+        except ValueError:
+            break                      # 超限：不重试，直接跳过
         except Exception:
             time.sleep(1.5 * (i + 1))
     if os.path.exists(path):
         os.remove(path)
     return False
+
+
+# 只接受明确安全的分级。不依赖服务端 nsfw 参数的语义 —— 客户端再兜一道。
+SAFE_LEVELS = {"none", "1", "safe", "pg", ""}
+
+
+def is_safe(rec):
+    lv = str(rec.get("nsfw_level", "")).strip().lower()
+    return lv in SAFE_LEVELS
 
 
 def norm(item):
@@ -174,6 +194,8 @@ def main():
     ap.add_argument("--api-key", default=os.environ.get("CIVITAI_API_KEY"))
     ap.add_argument("--width", type=int, default=512, help="下载宽度（越小越快）")
     ap.add_argument("--video-only", action="store_true")
+    ap.add_argument("--max-video-mb", type=float, default=8.0,
+                    help="单个视频体积上限，超过直接跳过")
     ap.add_argument("--sleep", type=float, default=0.7, help="每页之间的间隔秒")
     args = ap.parse_args()
 
@@ -198,6 +220,8 @@ def main():
     out = open(META, "a", encoding="utf-8")
     got = 0
     stats_ok = 0
+    nsfw_skipped = 0
+    big_skipped = 0
     plan = [(s, p, max(1, int(args.target * w))) for s, p, w in PLAN]
     if args.video_only:
         plan = [("Most Reactions", "Month", args.target),
@@ -222,14 +246,19 @@ def main():
                 rec = norm(it)
                 if rec["id"] in seen or not rec["media"]:
                     continue
+                if not is_safe(rec):
+                    nsfw_skipped += 1
+                    continue
                 is_video = rec["type"] == "video" or rec["media"].lower().endswith((".mp4", ".webm"))
                 if args.video_only and not is_video:
                     continue
                 ext = ".mp4" if is_video else ".jpg"
                 path = os.path.join(RAW, rec["id"] + ext)
                 url = rec["media"] if is_video else shrink_url(rec["media"], args.width)
+                cap = args.max_video_mb * (1 << 20) if is_video else 4 * (1 << 20)
                 if not os.path.exists(path):
-                    if not download(url, path):
+                    if not download(url, path, max_bytes=cap):
+                        big_skipped += 1
                         continue
                 rec["file"] = path
                 rec["type"] = "video" if is_video else "image"
@@ -250,6 +279,7 @@ def main():
 
     out.close()
     print(f"\n完成：新增 {got} 条 → {META}")
+    print(f"  跳过：分级不安全 {nsfw_skipped} 条，体积超限 {big_skipped} 条")
     if got:
         print(f"stats 字段可用率：{stats_ok}/{got} = {stats_ok/got*100:.0f}%")
         if stats_ok / got < 0.5:
