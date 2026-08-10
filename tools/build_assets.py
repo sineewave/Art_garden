@@ -42,6 +42,7 @@ META = "data/meta.jsonl"
 MANUAL = "data/raw/manual"
 ATLAS_DIR = "assets/atlas"
 SHEET_DIR = "assets/sheet"
+AUDIO_DIR = "assets/audio"
 MANIFEST = "assets/manifest.js"
 REPORT = "data/cluster_report.txt"
 SHEET_COLS, SHEET_ROWS = 4, 4
@@ -89,7 +90,7 @@ def center_crop(im, size):
 
 
 FFMPEG = None
-FFSTAT = {"videos": 0, "ok": 0, "fallback": 0}
+FFSTAT = {"videos": 0, "ok": 0, "fallback": 0, "audio": 0, "audio_mb": 0.0}
 
 
 def find_ffmpeg(explicit=None):
@@ -137,6 +138,44 @@ def video_frames(path, n, size):
         return [Image.open(os.path.join(tmp, f)).convert("RGB") for f in fs][:n]
     except Exception:
         return []
+
+
+def has_audio(path):
+    """探一下有没有音轨，省得对静音片子白跑一趟。"""
+    if not FFMPEG:
+        return False
+    probe = os.path.join(os.path.dirname(FFMPEG), "ffprobe")
+    if not os.path.exists(probe):
+        probe = shutil.which("ffprobe")
+    if not probe:
+        return True                      # 探不了就当有，让抽取自己失败
+    try:
+        r = subprocess.run([probe, "-v", "error", "-select_streams", "a",
+                            "-show_entries", "stream=index", "-of", "csv=p=0", path],
+                           capture_output=True, timeout=30)
+        return bool(r.stdout.strip())
+    except Exception:
+        return True
+
+
+def extract_audio(path, out, seconds):
+    """抽一小段单声道 AAC 循环用。画面是 16 帧的精灵图，音频本来也对不上口型，
+    所以这里要的是"氛围/配音的那个劲儿"，不是逐帧同步。"""
+    if not FFMPEG:
+        return 0
+    try:
+        subprocess.run(
+            [FFMPEG, "-v", "error", "-y", "-i", path, "-vn",
+             "-t", str(seconds), "-ac", "1", "-ar", "44100", "-b:a", "64k", out],
+            check=True, timeout=120)
+        return os.path.getsize(out) if os.path.exists(out) else 0
+    except Exception:
+        if os.path.exists(out):
+            try:
+                os.remove(out)
+            except Exception:
+                pass
+        return 0
 
 
 def signature(im):
@@ -198,6 +237,10 @@ def main():
     ap.add_argument("--k", type=int, default=8, help="物种数（对应花园里的八个物种位）")
     ap.add_argument("--w-prompt", type=float, default=0.62,
                     help="提示词通道权重（其余给外观）")
+    ap.add_argument("--audio", choices=["none", "local", "all"], default="local",
+                    help="抽音轨：none 不抽 / local 只抽自备素材（默认）/ all 全抽")
+    ap.add_argument("--audio-sec", type=float, default=12.0,
+                    help="每条音频保留几秒（循环播放）")
     ap.add_argument("--ffmpeg", default=None,
                     help="ffmpeg 可执行文件路径（默认自动查找）")
     ap.add_argument("--extra-dir", default="assets/incoming",
@@ -233,6 +276,7 @@ def main():
     print(f"素材 {len(recs)} 条\n")
     os.makedirs(ATLAS_DIR, exist_ok=True)
     os.makedirs(SHEET_DIR, exist_ok=True)
+    os.makedirs(AUDIO_DIR, exist_ok=True)
 
     # ---------- 第一遍：缩略图 + 特征 ----------
     print("[1/3] 生成缩略图与特征")
@@ -247,6 +291,15 @@ def main():
                     FFSTAT["ok"] += 1
                 else:
                     FFSTAT["fallback"] += 1
+                want_audio = (args.audio == "all" or
+                              (args.audio == "local" and r.get("stratum") == "自备"))
+                if fr and want_audio and has_audio(r["file"]):
+                    ap_ = os.path.join(AUDIO_DIR, f"{r['id']}.m4a")
+                    n_bytes = extract_audio(r["file"], ap_, args.audio_sec)
+                    if n_bytes > 2000:
+                        r["_audio"] = 1
+                        FFSTAT["audio"] += 1
+                        FFSTAT["audio_mb"] += n_bytes / 1e6
                 if fr:
                     sheet = Image.new("RGB", (tile * SHEET_COLS, tile * SHEET_ROWS))
                     for j, f in enumerate(fr):
@@ -341,6 +394,8 @@ def main():
         "keys": ["atlas", "x", "y", "isVideo", "stratum", "likes",
                  "comments", "frames", "model", "prompt", "url", "id", "cluster"],
         "items": items,
+        "audioDir": AUDIO_DIR + "/",
+        "audio": [r["id"] for r in keep if r.get("_audio")],
         "clusters": {str(j): {"n": sizes[j], "label": labels.get(j, "")}
                      for j in range(args.k)},
         "diversity": div_by_stratum, "diversityAll": div_all, "nearDupRate": dup,
@@ -389,6 +444,12 @@ def main():
                  for f in os.listdir(SHEET_DIR)) / 1e6 if os.path.isdir(SHEET_DIR) else 0
         print(f"视频 {FFSTAT['videos']} 个：抽帧成功 {FFSTAT['ok']}，"
               f"退化为首帧 {FFSTAT['fallback']}；精灵图合计 {sd:.1f} MB")
+        if FFSTAT["audio"]:
+            print(f"音轨 {FFSTAT['audio']} 条，合计 {FFSTAT['audio_mb']:.1f} MB"
+                  f"（--audio {args.audio}，每条 {args.audio_sec:.0f} 秒，循环播放）")
+        elif args.audio != "none":
+            print(f"音轨 0 条（--audio {args.audio}）—— "
+                  "自备素材放 assets/incoming/，或用 --audio all 把爬到的也抽上")
         if FFSTAT["fallback"] and not FFMPEG:
             print("  ↑ 全部退化是因为没有 ffmpeg，装好后重跑本脚本即可（图片部分不会重下）")
     print(f"报告已存 {REPORT}")

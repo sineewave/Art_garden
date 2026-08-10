@@ -369,6 +369,7 @@ const TUNE_DEF={
   maxPlants:26,     // 花园最大植株
   speciesCap:4,     // 单一物种上限 —— 潮流可以成簇，但别把一园变成一种
   idleSec:  60,     // 多久无输入 → 算法注视接管
+  audioVol: 0.7,    // 被注视的那一个视频的音量（0 = 静音）
   dormDie:  240     // 休眠多久后化为数字残骸（真正决定「会不会消亡」的那一档）
 };
 const TUNE_META=[
@@ -384,7 +385,8 @@ const TUNE_META=[
   ['speciesCap',['单种上限','SPECIES CAP'],  1,   8,   1,    v=>v.toFixed(0),'garden'],
   ['dormDie',   ['休眠→残骸','DORMANT→DEBRIS'],30,600,10,   v=>v.toFixed(0)+'s','garden'],
   ['autoGain',  ['算法注视','ALGO GAZE'],    0,   1,   .01,  v=>'×'+v.toFixed(2),'both'],
-  ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s','both']
+  ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s','both'],
+  ['audioVol',  ['声音','SOUND'],           0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both']
 ];
 const TUNE=Object.assign({},TUNE_DEF);
 try{ const saved=JSON.parse(localStorage.getItem('ag_tune')||'{}');
@@ -710,6 +712,7 @@ function hashStr(s){ let h=2166136261;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
   return h>>>0; }
 const CLUSTER_LABEL={};
+const AUDIO_IDS=new Set((ASSETS&&ASSETS.audio)||[]);
 if(ASSETS&&ASSETS.items&&ASSETS.items.length){
   ASSETS.atlases.forEach((src,i)=>{ const im=new Image();
     im.onload=()=>atlasReady++; im.src=src; ATLAS[i]=im; });
@@ -741,7 +744,7 @@ function assetArt(i,palIdx){
     atlasI:it[0], sx:it[1]*T, sy:it[2]*T, tile:T,
     isVideo:!!it[3], stratum:it[4], likes:it[5], comments:it[6], frames:it[7],
     local:it[4]==='自备',          // 自备素材没有平台互动，体格不该按 0 赞算
-    model, prompt, srcUrl:it[10], id:it[11],
+    model, prompt, srcUrl:it[10], id:it[11], hasAudio:AUDIO_IDS.has(it[11]),
     style:'photo', palIdx:(palIdx!==undefined?palIdx:hashStr(model||('m'+i))%NBUCKET),
     title:titleFromPrompt(prompt,model), sheet:null, sheetTried:false, f:0 };
 }
@@ -873,6 +876,47 @@ function seedDrifters(){
   for(let i=0;i<8;i++) G.drifters.push({i, fx:Math.random(), wy:-70-Math.random()*300,
     s:18+Math.random()*22, sp:.005+Math.random()*.016, ph:Math.random()*7});
 }
+/* ============================================================
+   声音 —— 只有正被注视的那一个视频出声
+   ------------------------------------------------------------
+   同一刻至多一条音轨：气泡罩住谁，谁的配音淡入；离开就淡出。
+   一百条短视频的原声叠在一起只会是噪音，所以这里刻意做成"独奏"。
+   浏览器不允许无交互自动播放，因此在进场那次点击时解锁。
+   ============================================================ */
+const AUD={el:null, cur:null, want:null, gain:0, unlocked:false, tried:{}};
+function audioUnlock(){
+  if(AUD.unlocked)return;
+  AUD.unlocked=true;
+  if(!AUD.el){ AUD.el=new Audio(); AUD.el.loop=true; AUD.el.volume=0; AUD.el.preload='none'; }
+  // 用一段静音触发一次播放许可
+  AUD.el.play().catch(()=>{});
+  AUD.el.pause();
+}
+/* 每帧：把"想听的那一条"和"正在响的那一条"对齐，音量做平滑 */
+function audioTick(dt){
+  if(!AUD.el)return;
+  const vol=TUNE.audioVol||0;
+  const want=(vol>0&&AUD.unlocked)?AUD.want:null;
+  if(want&&want!==AUD.cur){
+    if(AUD.gain>0.02){ AUD.gain=Math.max(0,AUD.gain-dt*3.2); }   // 先把上一条压下去
+    else{
+      AUD.cur=want;
+      try{ AUD.el.src=ASSETS.audioDir+want+'.m4a'; AUD.el.currentTime=0;
+           AUD.el.play().catch(()=>{}); }catch(_){}
+    }
+  } else if(!want&&AUD.cur){
+    AUD.gain=Math.max(0,AUD.gain-dt*2.4);
+    if(AUD.gain<=0.02){ AUD.el.pause(); AUD.cur=null; }
+  } else if(want&&want===AUD.cur){
+    AUD.gain=Math.min(1,AUD.gain+dt*1.6);
+  }
+  AUD.el.volume=clamp(AUD.gain*vol,0,1);
+}
+/* 谁在气泡里、又有音轨，谁就是这一刻的"独奏者" */
+function audioFocus(art){
+  if(art&&art.real&&art.isVideo&&art.hasAudio)AUD.want=art.id;
+}
+
 /* 统一取图口：程序纹样 / 上传图 / 图集块 / 视频帧，同一个调用 */
 function drawArt(ctx,art,dx,dy,dw,dh,active){
   if(art&&art.user){
@@ -1430,8 +1474,10 @@ function renderBloom(){
     roundRect(ctx,ix-s/2+2.6/z,iy-s/2+3.2/z,s,s,rr2); ctx.fill();
     ctx.save(); roundRect(ctx,ix-s/2,iy-s/2,s,s,rr2); ctx.clip();
     ctx.imageSmoothingEnabled=!seedy;
+    const litB=inGaze(sxs,sys,s*.5);
+    if(litB)audioFocus(it.art);
     drawArt(ctx, it.art, ix-s/2, iy-s/2, s, s,
-      it===B.sel||it===PIN.B||it.att>12||inGaze(sxs,sys,s*.5));
+      it===B.sel||it===PIN.B||it.att>12||litB);
     ctx.imageSmoothingEnabled=true;
     ctx.restore();
     ctx.lineWidth=Math.max(.9/z,s*.014); ctx.strokeStyle='rgba(255,255,255,.75)';
@@ -1483,7 +1529,7 @@ function refreshCardB(){ const it=PIN.B; if(!it)return;
     if(a.prompt)R.push([bi('提示词','PROMPT'), a.prompt.slice(0,96), 'col']);
     R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')]);
     if(a.isVideo)R.push([bi('影像','VIDEO'),
-      `${a.frames||16} ${tt('帧','frames')} · ${a.sheet?tt('已载入','loaded'):tt('注视时才载入','loads on gaze')}`]);
+      `${a.frames||16} ${tt('帧','frames')}${a.hasAudio?tt(' · 有声 ♪',' · with sound ♪'):''}`]);
     R.push([bi('平台互动','REACTIONS'), a.local
       ? tt('自备素材 · 无平台数据','local file · no platform data')
       : a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
@@ -2192,6 +2238,7 @@ function drawMount(ctx,p,size,fade,art){
   roundRect(ctx,-s/2,-s/2,s,s,r); ctx.clip();
   if(fade>0)ctx.filter=`saturate(${(1-fade*.85).toFixed(2)}) brightness(${(1-fade*.14).toFixed(2)})`;
   ctx.imageSmoothingEnabled=!!art.real;
+  if(p._lit)audioFocus(art);
   drawArt(ctx,art,-s/2,-s/2,s,s, G.sel===p||PIN.G===p||p.att>20||p._lit);
   ctx.imageSmoothingEnabled=true;
   ctx.restore();
@@ -3358,7 +3405,8 @@ function refreshCardG(){ const p=PIN.G; if(!p)return;
     if(a.prompt)R.push([bi('提示词','PROMPT'), a.prompt.slice(0,96), 'col']);
     R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')+(a.isVideo?tt(' · 视频',' · video'):'')]);
     if(a.isVideo)R.push([bi('影像','VIDEO'),
-      `${a.frames||16} ${tt('帧','frames')} · ${p._lit?tt('播放中','playing'):tt('注视即播放','plays on gaze')}`]);
+      `${a.frames||16} ${tt('帧','frames')}${a.hasAudio?' ♪':''} · `
+      +(p._lit?tt('播放中','playing'):tt('注视即播放','plays on gaze'))]);
     R.push([bi('平台互动','REACTIONS'), a.local
       ? tt('自备素材 · 无平台数据','local file · no platform data')
       : a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
@@ -3463,10 +3511,12 @@ function frame(now){
   updateGaze(dt);
   let drain=updateBloom(dt);
   drain+=updateGarden(dt);
+  AUD.want=null;                       // 每帧重新竞逐
   if(activePage==='garden')gardenHoverTargets();
   if(activePage==='bloom')renderBloom(); else renderGarden();
   drain=Math.min(drain, 20*dt);
   S.att=clamp(S.att+dt*5.2-drain,0,100);
+  audioTick(dt);
   syncCards();
   updateHUD(dt);
   if(!VT)requestAnimationFrame(frame);
@@ -3478,11 +3528,11 @@ GAZE.x=cB._w/2; GAZE.y=cB._h/2; GAZE.tx=GAZE.x; GAZE.ty=GAZE.y;
 if(VT) setInterval(()=>frame(performance.now()),16);
 else requestAnimationFrame(frame);
 
-$('enter').onclick=()=>$('intro').remove();
+$('enter').onclick=()=>{ audioUnlock(); $('intro').remove(); };
 
 /* ---- 调试直达：?skip=1&page=garden&cam=430&warp=180&vt=1&probe=1 ---- */
 (function(){
-  if(Q.get('skip'))$('intro').remove();
+  if(Q.get('skip')){ $('intro').remove(); }
   if(Q.get('lang'))setLang(Q.get('lang'));
   if(Q.get('th'))setTheme(Q.get('th'));
   if(Q.get('show'))setShow(true);
