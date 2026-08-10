@@ -73,11 +73,31 @@ def load_meta():
                 "likes": 0, "comments": 0, "license": "user supplied",
             })
     seen, out = set(), []
+    missing, dup = 0, 0
+    miss_kind = {}
     for r in recs:
         k = r.get("id")
-        if k and k not in seen and os.path.exists(r.get("file", "")):
-            seen.add(k)
-            out.append(r)
+        if not k or k in seen:
+            dup += 1
+            continue
+        if not os.path.exists(r.get("file", "")):
+            missing += 1
+            miss_kind[r.get("type", "?")] = miss_kind.get(r.get("type", "?"), 0) + 1
+            continue
+        seen.add(k)
+        out.append(r)
+    # 元数据里有、磁盘上没有的，必须说出来 —— 静默丢弃会让人以为素材本来就这么少
+    if missing or dup:
+        bits = []
+        if missing:
+            kinds = "，".join(f"{k} {v} 条" for k, v in sorted(miss_kind.items()))
+            bits.append(f"文件已不在磁盘上 {missing} 条（{kinds}）")
+        if dup:
+            bits.append(f"重复 id {dup} 条")
+        print("元数据 " + str(len(recs)) + " 条，其中 " + "；".join(bits))
+        if miss_kind.get("video"):
+            print("  ↑ 视频缺失多半是下载被中断或清理过 data/raw/civitai/，"
+                  "重跑 fetch_civitai.py --video-only 会自动补齐（已有的不会重下）")
     return out
 
 
