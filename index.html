@@ -740,6 +740,7 @@ function assetArt(i,palIdx){
   return { real:true, idx:i, cluster:cl, clusterLabel:(cl!=null?(CLUSTER_LABEL[palBucket(cl)]||''):''),
     atlasI:it[0], sx:it[1]*T, sy:it[2]*T, tile:T,
     isVideo:!!it[3], stratum:it[4], likes:it[5], comments:it[6], frames:it[7],
+    local:it[4]==='自备',          // 自备素材没有平台互动，体格不该按 0 赞算
     model, prompt, srcUrl:it[10], id:it[11],
     style:'photo', palIdx:(palIdx!==undefined?palIdx:hashStr(model||('m'+i))%NBUCKET),
     title:titleFromPrompt(prompt,model), sheet:null, sheetTried:false, f:0 };
@@ -1483,7 +1484,9 @@ function refreshCardB(){ const it=PIN.B; if(!it)return;
     R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')]);
     if(a.isVideo)R.push([bi('影像','VIDEO'),
       `${a.frames||16} ${tt('帧','frames')} · ${a.sheet?tt('已载入','loaded'):tt('注视时才载入','loads on gaze')}`]);
-    R.push([bi('平台互动','REACTIONS'), a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
+    R.push([bi('平台互动','REACTIONS'), a.local
+      ? tt('自备素材 · 无平台数据','local file · no platform data')
+      : a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
   } else {
     R.push([bi('类型','TYPE'), tt(`${it.type.zh} ${it.type.en}`,it.type.en)]);
     R.push([bi('生成模型','MODEL'), it.model]);
@@ -1795,7 +1798,10 @@ function plantAt(o={}){
   const art0=o.art||makeArt(sp.style, sp.pal);
   // 真实平台互动 → 植株的"体格"。被看得多的图，长成的花就更大更高。
   const lk=(art0 && art0.likes) || 0;
-  const vig=0.72+0.62*clamp(Math.log10(1+lk)/4.2,0,1);   // 上限收着点，别顶出画面
+  // 体格来自真实点赞数（对数换算）；自备素材没有平台数据，给中位体格，
+  // 否则你自己的片子会永远长成最小的一朵 —— 那不是数据，只是缺数据
+  const vig=(art0 && art0.local) ? 1.06
+          : 0.72+0.62*clamp(Math.log10(1+lk)/4.2,0,1);   // 上限收着点，别顶出画面
   const p={ id:'PL-'+pad(++S.plantSeq), si, sp, fx, row, rs:ROWS[row].s,
     art:art0, likes:lk, vig,
     // 同种之间的细微差异：色相、花瓣数、花头比例、株高
@@ -3353,7 +3359,9 @@ function refreshCardG(){ const p=PIN.G; if(!p)return;
     R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')+(a.isVideo?tt(' · 视频',' · video'):'')]);
     if(a.isVideo)R.push([bi('影像','VIDEO'),
       `${a.frames||16} ${tt('帧','frames')} · ${p._lit?tt('播放中','playing'):tt('注视即播放','plays on gaze')}`]);
-    R.push([bi('平台互动','REACTIONS'), a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
+    R.push([bi('平台互动','REACTIONS'), a.local
+      ? tt('自备素材 · 无平台数据','local file · no platform data')
+      : a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
   } else {
     R.push([bi('生成模型','MODEL'), p.model+' · '+tt(p.type.zh,p.type.en)]);
   }
