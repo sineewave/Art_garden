@@ -370,6 +370,7 @@ const TUNE_DEF={
   speciesCap:4,     // 单一物种上限 —— 潮流可以成簇，但别把一园变成一种
   idleSec:  60,     // 多久无输入 → 算法注视接管
   audioVol: 0.7,    // 被注视的那一个视频的音量（0 = 静音）
+  ambVol:   0.5,    // 生态声景：嗡鸣／脉冲／花开，全部合成
   dormDie:  240     // 休眠多久后化为数字残骸（真正决定「会不会消亡」的那一档）
 };
 const TUNE_META=[
@@ -386,7 +387,8 @@ const TUNE_META=[
   ['dormDie',   ['休眠→残骸','DORMANT→DEBRIS'],30,600,10,   v=>v.toFixed(0)+'s','garden'],
   ['autoGain',  ['算法注视','ALGO GAZE'],    0,   1,   .01,  v=>'×'+v.toFixed(2),'both'],
   ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s','both'],
-  ['audioVol',  ['声音','SOUND'],           0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both']
+  ['audioVol',  ['视频原声','VIDEO SOUND'], 0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both'],
+  ['ambVol',    ['生态声景','AMBIENCE'],     0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both']
 ];
 const TUNE=Object.assign({},TUNE_DEF);
 try{ const saved=JSON.parse(localStorage.getItem('ag_tune')||'{}');
@@ -885,6 +887,8 @@ function seedDrifters(){
    ============================================================ */
 const AUD={el:null, cur:null, want:null, gain:0, unlocked:false, tried:{}};
 function audioUnlock(){
+  sndInit();
+  if(SND.ctx&&SND.ctx.state==='suspended')SND.ctx.resume().catch(()=>{});
   if(AUD.unlocked)return;
   AUD.unlocked=true;
   if(!AUD.el){ AUD.el=new Audio(); AUD.el.loop=true; AUD.el.volume=0; AUD.el.preload='none'; }
@@ -915,6 +919,98 @@ function audioTick(dt){
 /* 谁在气泡里、又有音轨，谁就是这一刻的"独奏者" */
 function audioFocus(art){
   if(art&&art.real&&art.isVideo&&art.hasAudio)AUD.want=art.id;
+}
+
+/* ============================================================
+   生态声景 —— 全部合成，不用任何素材
+   ------------------------------------------------------------
+   这套声音说的是同一件事：地表是生物的，地下是机器的。
+   相机往下潜，花园的声音被滤掉，变电站的嗡鸣浮上来；
+   功率越高嗡得越紧。花开、休眠、成为残骸各有各的一声。
+   ============================================================ */
+const SND={ctx:null, master:null, filt:null, humG:null, waterG:null,
+           watering:0, last:{}, ready:false};
+const PENTA=[0,2,4,7,9,12,14,16];        // 五声音阶：随便撞都不难听
+function sndInit(){
+  if(SND.ctx)return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  try{
+    const ctx=new AC(); SND.ctx=ctx;
+    const master=ctx.createGain(); master.gain.value=0; master.connect(ctx.destination);
+    const filt=ctx.createBiquadFilter();                 // 越往地下越闷
+    filt.type='lowpass'; filt.frequency.value=2600; filt.Q.value=.6; filt.connect(master);
+    SND.master=master; SND.filt=filt;
+    // 嗡鸣：两枚失谐锯齿 + 一枚三角，跟着实时功率走
+    const humG=ctx.createGain(); humG.gain.value=0; humG.connect(filt);
+    [[55,'sawtooth',.26],[55.3,'sawtooth',.22],[110,'triangle',.10]].forEach(([f,t,g])=>{
+      const o=ctx.createOscillator(); o.type=t; o.frequency.value=f;
+      const gn=ctx.createGain(); gn.gain.value=g;
+      o.connect(gn); gn.connect(humG); o.start();
+    });
+    SND.humG=humG;
+    // 浇灌时的细碎气声：带通噪声
+    const nb=ctx.createBuffer(1,Math.floor(ctx.sampleRate*2),ctx.sampleRate);
+    const d=nb.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.6;
+    const src=ctx.createBufferSource(); src.buffer=nb; src.loop=true;
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.value=2100; bp.Q.value=.7;
+    const wg=ctx.createGain(); wg.gain.value=0;
+    src.connect(bp); bp.connect(wg); wg.connect(filt); src.start();
+    SND.waterG=wg;
+    SND.ready=true;
+  }catch(_){ SND.ctx=null; }
+}
+/* 一记短音：花开、脉冲、残骸都走这里，只是音色与包络不同 */
+function sndPing(freq,dur,type,gain,when){
+  if(!SND.ready||!TUNE.ambVol)return;
+  const ctx=SND.ctx, t0=ctx.currentTime+(when||0);
+  const o=ctx.createOscillator(); o.type=type||'sine'; o.frequency.value=freq;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0,t0);
+  g.gain.linearRampToValueAtTime(gain,t0+Math.min(.02,dur*.2));
+  g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
+  o.connect(g); g.connect(SND.filt);
+  o.start(t0); o.stop(t0+dur+.02);
+}
+/* 同类声音限流，别让一堆事件同时炸开 */
+function sndGate(kind,minGap){
+  const now=perfNow();
+  if(SND.last[kind]&&now-SND.last[kind]<minGap)return false;
+  SND.last[kind]=now; return true;
+}
+const midi=n=>55*Math.pow(2,n/12);
+function sndBloom(si,stage){                       // 花开：音高按物种，越成熟越高
+  if(!sndGate('bloom',90))return;
+  const n=PENTA[si%PENTA.length]+24+(stage>=6?12:0);
+  sndPing(midi(n),1.25,'sine',.10);
+  sndPing(midi(n+7),1.0,'sine',.05,.06);
+}
+function sndPulse(li){                              // 脉冲过站：越往下越低沉
+  if(!sndGate('pulse',55))return;
+  sndPing(midi(46-li*5),.09,'square',.016);
+}
+function sndDorm(){ if(sndGate('dorm',400))sndPing(midi(20),.55,'triangle',.06); }
+function sndDebris(){ if(sndGate('deb',300))sndPing(midi(16),.30,'square',.035); }
+function sndTrend(si){
+  if(!sndGate('trend',1500))return;
+  [0,4,7,11].forEach((iv,k)=>sndPing(midi(PENTA[si%PENTA.length]+24+iv),1.6,'sine',.055,k*.10));
+}
+function sndTick(dt){
+  if(!SND.ready)return;
+  const v=TUNE.ambVol||0, k=Math.min(1,dt*3);
+  // 视频出声时把声景压下去一半，两层不打架
+  const duck=(AUD.cur&&AUD.gain>.1)?.45:1;
+  SND.master.gain.value+=(v*duck-SND.master.gain.value)*k;
+  const span=Math.max(1,UG.layers[4].y-UG.top);
+  const dep=clamp((G.cam-UG.top)/span,0,1);          // 相机潜得多深
+  SND.filt.frequency.value+=(lerp(2600,460,dep)-SND.filt.frequency.value)*Math.min(1,dt*2);
+  const pw=clamp((S.power-40)/260,0,1);
+  const target=(0.04+0.20*pw)*(0.30+0.70*dep);
+  SND.humG.gain.value+=(target-SND.humG.gain.value)*Math.min(1,dt*1.5);
+  SND.waterG.gain.value+=((SND.watering?0.035:0)-SND.waterG.gain.value)*Math.min(1,dt*4);
+  SND.watering=0;
 }
 
 /* 统一取图口：程序纹样 / 上传图 / 图集块 / 视频帧，同一个调用 */
@@ -1890,7 +1986,7 @@ function computeTrends(){
       tr.cx=mem.reduce((a,p)=>a+p.fx,0)/mem.length;
       tr.att=mem.reduce((a,p)=>a+p.att,0);
       const was=tr.on; tr.on=tr.att>14;
-      if(tr.on&&!was&&Date.now()-tr.toastT>50000){ tr.toastT=Date.now();
+      if(tr.on&&!was&&Date.now()-tr.toastT>50000){ tr.toastT=Date.now(); sndTrend(si);
         toast(tt('「'+sp.zh+'」聚集成簇 · 形成潮流 TREND','"'+sp.en+'" clustered · a TREND forms')); }
     } else { tr.on=false; tr.att=mem.reduce((a,p)=>a+p.att,0); }
   });
@@ -2016,14 +2112,15 @@ function updateGarden(dt){
     const p=G.plants[i], sp=p.sp, x=p.fx*w, rowWy=ROWS[p.row].wy;
 
     if(p.state==='dying'){ p.dieT+=dt/2.4;
-      if(p.dieT>=1){ toast(tt(p.id+'（'+sp.zh+'）化为数字残骸',p.id+' ('+sp.en+') became digital debris')); removePlant(p,true); }
+      if(p.dieT>=1){ sndDebris();
+        toast(tt(p.id+'（'+sp.zh+'）化为数字残骸',p.id+' ('+sp.en+') became digital debris')); removePlant(p,true); }
       continue; }
 
     // 注视浇灌：以 GAZE 为准（观众或算法）
     const headEx=(p.head+34)*p.rs;
     const topWy=rowWy-p.h*p.rs-headEx;
     const near=active&&Math.abs(GAZE.x-x)<52*p.rs+10&&gwy>topWy&&gwy<rowWy+16;
-    if(near&&(GAZE.mode==='visitor')) p.seenT=(p.seenT||0)+dt;   // 真被人看了多久
+    if(near&&(GAZE.mode==='visitor')){ p.seenT=(p.seenT||0)+dt; SND.watering=1; }
     if(near&&avail){
       // 观众的注视是主力；算法只留极弱的托底，避免无人时全园枯死
       const gain=(GAZE.mode==='visitor')?TUNE.gazeGain:TUNE.gazeGain*TUNE.autoGain;
@@ -2060,6 +2157,7 @@ function updateGarden(dt){
         buildRoots(p);
         for(let k=0;k<8;k++) G.parts.sparks.push({x:x+R(-22,22), wy:rowWy-p.h*p.rs-R(0,26), vy:-R(10,24), life:1});
         spawnPulse('signal',p);
+        sndBloom(p.si,p.stage);
         if(p.stage===5) toast(tt(p.id+' 初绽 BLOOM · '+sp.zh,p.id+' first BLOOM · '+sp.en));
         if(p.stage===6) toast(tt(p.id+' 进入繁盛期 FLOURISH',p.id+' entered FLOURISH'));
         if(p.stage===7) toast(tt(p.id+' 升格为群落 COLONY · 潮流的一部分',p.id+' became a COLONY · part of the trend'));
@@ -2093,7 +2191,7 @@ function updateGarden(dt){
     p.wilt=clamp((p.dry-40)/60,0,1);
     if(p.wilt>0.45&&p.state==='alive'&&Math.random()<dt*.7&&p.h>26)
       G.parts.leaves.push({x:x+R(-9,9), wy:rowWy-p.h*p.rs*R(.4,.92), vx:R(-5,5), vy:R(4,11), rot:R(0,7), row:p.row});
-    if(p.state==='alive'&&p.wilt>=1){ p.state='dormant'; p.dormT=0;
+    if(p.state==='alive'&&p.wilt>=1){ p.state='dormant'; p.dormT=0; sndDorm();
       toast(tt(p.id+' 进入休眠 DORMANT · 注视可将其唤醒',p.id+' went DORMANT · gaze to wake it')); }
     if(p.state==='dormant'){ p.dormT+=dt;
       if(p.dormT>TUNE.dormDie){ p.state='dying'; p.dieT=0; } }
@@ -2181,6 +2279,7 @@ function updateGarden(dt){
       if(!dead&&pl.path){
         pl.path.forEach((ni,li)=>{ const nd=netNode(li,ni); if(!nd)return;
           nd.load=Math.min(1,nd.load+[.10,.15,.13,.12,.10][li]); nd.count++; });
+        sndPulse(pl.path.length-1);
       }
       G.pulses.splice(i,1); }
   }
@@ -3518,7 +3617,7 @@ function frame(now){
   if(activePage==='bloom')renderBloom(); else renderGarden();
   drain=Math.min(drain, 20*dt);
   S.att=clamp(S.att+dt*5.2-drain,0,100);
-  audioTick(dt);
+  audioTick(dt); sndTick(dt);
   syncCards();
   updateHUD(dt);
   if(!VT)requestAnimationFrame(frame);
