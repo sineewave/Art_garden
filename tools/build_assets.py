@@ -132,6 +132,7 @@ def hsv_hist(im):
 
 
 EXTRA_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
+EXTRA_VID = {".mp4", ".webm", ".mov", ".m4v"}
 
 
 def load_extra(d):
@@ -142,12 +143,12 @@ def load_extra(d):
     out = []
     for name in sorted(os.listdir(d)):
         ext = os.path.splitext(name)[1].lower()
-        if ext not in EXTRA_EXT:
+        if ext not in EXTRA_EXT and ext not in EXTRA_VID:
             continue
         out.append({
-            "id": "local-" + os.path.splitext(name)[0][:40],
+            "id": "local-" + re.sub(r"[^A-Za-z0-9_-]", "-", os.path.splitext(name)[0])[:40],
             "file": os.path.join(d, name),
-            "type": "image",
+            "type": "video" if ext in EXTRA_VID else "image",
             "stratum": "自备",
             "likes": 0, "comments": 0,
             "prompt": "", "model": "自备图片 LOCAL",

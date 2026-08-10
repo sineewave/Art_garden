@@ -744,16 +744,27 @@ function assetArt(i,palIdx){
     style:'photo', palIdx:(palIdx!==undefined?palIdx:hashStr(model||('m'+i))%NBUCKET),
     title:titleFromPrompt(prompt,model), sheet:null, sheetTried:false, f:0 };
 }
-/* 视频精灵图：并发上限 3，避免一次点开一片就卡 */
+/* 视频精灵图：并发上限 3；常驻上限 SHEET_CAP，最久没被看的先卸掉。
+   一张 512² 的精灵图解码后约 1MB，几百个视频不设上限会把内存吃穿。 */
 let sheetLoads=0;
+const SHEET_CAP=36, SHEET_LIVE=[];
 function ensureSheet(a){
-  if(a.sheet||a.sheetTried||!a.frames||sheetLoads>=3)return;
+  if(a.sheet){ a.seenAt=perfNow(); return; }
+  if(a.sheetTried||!a.frames||sheetLoads>=3)return;
   a.sheetTried=true; sheetLoads++;
   const im=new Image();
-  im.onload=()=>{ a.sheet=im; sheetLoads--; };
-  im.onerror=()=>{ sheetLoads--; };
+  im.onload=()=>{ a.sheet=im; a.seenAt=perfNow(); sheetLoads--;
+    SHEET_LIVE.push(a);
+    while(SHEET_LIVE.length>SHEET_CAP){            // 淘汰最久没被注视的那张
+      SHEET_LIVE.sort((x,y)=>(x.seenAt||0)-(y.seenAt||0));
+      const old=SHEET_LIVE.shift();
+      if(old&&old!==a){ old.sheet=null; old.sheetTried=false; }
+    }
+  };
+  im.onerror=()=>{ sheetLoads--; a.sheetTried=false; };
   im.src=ASSETS.sheetDir+a.id+'.jpg';
 }
+function sheetStats(){ return {live:SHEET_LIVE.length, cap:SHEET_CAP, loading:sheetLoads}; }
 /* ============================================================
    观众上传的图片 —— 设置里「＋ 载入图片」
    ------------------------------------------------------------
@@ -1406,6 +1417,7 @@ function renderBloom(){
     if(it.state==='ascend'){ s*=1+it.ascT*.7; alpha*=(it.ascT<.7?1:1-(it.ascT-.7)/.3); }
     if(it.state==='fading'){ alpha*=1-it.fade; }
     const ix=it.x, iy=it.y+Math.sin(B.t*.8+it.ph)*3.4;
+    const sxs=(ix-B.cam.x)*z+w/2, sys=(iy-B.cam.y)*z+h/2;   // 屏幕坐标：判断在不在气泡里
     if(ix+s<v.x0||ix-s>v.x1||iy+s<v.y0||iy-s>v.y1)return;
     const seedy=it.att<6&&it.state==='live';
     ctx.globalAlpha=alpha*(seedy?.78:1);
@@ -1417,7 +1429,8 @@ function renderBloom(){
     roundRect(ctx,ix-s/2+2.6/z,iy-s/2+3.2/z,s,s,rr2); ctx.fill();
     ctx.save(); roundRect(ctx,ix-s/2,iy-s/2,s,s,rr2); ctx.clip();
     ctx.imageSmoothingEnabled=!seedy;
-    drawArt(ctx, it.art, ix-s/2, iy-s/2, s, s, it===B.sel||it===PIN.B||it.att>12);
+    drawArt(ctx, it.art, ix-s/2, iy-s/2, s, s,
+      it===B.sel||it===PIN.B||it.att>12||inGaze(sxs,sys,s*.5));
     ctx.imageSmoothingEnabled=true;
     ctx.restore();
     ctx.lineWidth=Math.max(.9/z,s*.014); ctx.strokeStyle='rgba(255,255,255,.75)';
@@ -1468,6 +1481,8 @@ function refreshCardB(){ const it=PIN.B; if(!it)return;
     R.push([bi('生成模型','MODEL'), a.model||'—']);
     if(a.prompt)R.push([bi('提示词','PROMPT'), a.prompt.slice(0,96), 'col']);
     R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')]);
+    if(a.isVideo)R.push([bi('影像','VIDEO'),
+      `${a.frames||16} ${tt('帧','frames')} · ${a.sheet?tt('已载入','loaded'):tt('注视时才载入','loads on gaze')}`]);
     R.push([bi('平台互动','REACTIONS'), a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
   } else {
     R.push([bi('类型','TYPE'), tt(`${it.type.zh} ${it.type.en}`,it.type.en)]);
@@ -1956,6 +1971,7 @@ function updateGarden(dt){
     const headEx=(p.head+34)*p.rs;
     const topWy=rowWy-p.h*p.rs-headEx;
     const near=active&&Math.abs(GAZE.x-x)<52*p.rs+10&&gwy>topWy&&gwy<rowWy+16;
+    if(near&&(GAZE.mode==='visitor')) p.seenT=(p.seenT||0)+dt;   // 真被人看了多久
     if(near&&avail){
       // 观众的注视是主力；算法只留极弱的托底，避免无人时全园枯死
       const gain=(GAZE.mode==='visitor')?TUNE.gazeGain:TUNE.gazeGain*TUNE.autoGain;
@@ -2041,7 +2057,7 @@ function updateGarden(dt){
              *p.headJit*p.vig*rowCap;
     p.h=lerp(p.h,tH,dt*1.8);
     p.head=lerp(p.head,tHead,dt*1.8);
-    p._lit=TH.lit?inGaze(x, gy(rowWy-p.h*p.rs*.62), 12):false;
+    p._lit=inGaze(x, gy(rowWy-p.h*p.rs)-p.head*.5*p.rs, p.head*.6*p.rs+14);
     p.rootT=Math.min(1,p.rootT+dt*1.2);
     p.branches.forEach(b=>b.t=Math.min(1,b.t+dt/22));
     if(p.att>3&&Math.random()<dt*.42) spawnPulse('signal',p);
@@ -2170,11 +2186,20 @@ function drawMount(ctx,p,size,fade,art){
   roundRect(ctx,-s/2,-s/2,s,s,r); ctx.clip();
   if(fade>0)ctx.filter=`saturate(${(1-fade*.85).toFixed(2)}) brightness(${(1-fade*.14).toFixed(2)})`;
   ctx.imageSmoothingEnabled=!!art.real;
-  drawArt(ctx,art,-s/2,-s/2,s,s, G.sel===p||PIN.G===p||p.att>20||(TH.lit&&p._lit));
+  drawArt(ctx,art,-s/2,-s/2,s,s, G.sel===p||PIN.G===p||p.att>20||p._lit);
   ctx.imageSmoothingEnabled=true;
   ctx.restore();
   ctx.lineWidth=Math.max(1,s*.022); ctx.strokeStyle='rgba(255,255,255,.85)';
   roundRect(ctx,-s/2,-s/2,s,s,r); ctx.stroke();
+  if(art.isVideo&&s>22){          // 影像的角标：被注视时才是实心的
+    const bs=Math.max(5,s*.13), vx=s/2-bs*1.05, vy=s/2-bs*1.05;
+    ctx.fillStyle=p._lit?'rgba(255,255,255,.92)':'rgba(255,255,255,.62)';
+    ctx.beginPath(); ctx.arc(vx,vy,bs*.72,0,7); ctx.fill();
+    ctx.fillStyle='rgba(46,45,40,.78)';
+    ctx.beginPath();
+    ctx.moveTo(vx-bs*.22,vy-bs*.30); ctx.lineTo(vx+bs*.36,vy);
+    ctx.lineTo(vx-bs*.22,vy+bs*.30); ctx.closePath(); ctx.fill();
+  }
   ctx.restore();
 }
 /* 像素尘：以花心为原点撒几粒色块，位置由种子决定（不逐帧闪烁） */
@@ -3326,6 +3351,8 @@ function refreshCardG(){ const p=PIN.G; if(!p)return;
     R.push([bi('生成模型','MODEL'), a.model||'—']);
     if(a.prompt)R.push([bi('提示词','PROMPT'), a.prompt.slice(0,96), 'col']);
     R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')+(a.isVideo?tt(' · 视频',' · video'):'')]);
+    if(a.isVideo)R.push([bi('影像','VIDEO'),
+      `${a.frames||16} ${tt('帧','frames')} · ${p._lit?tt('播放中','playing'):tt('注视即播放','plays on gaze')}`]);
     R.push([bi('平台互动','REACTIONS'), a.likes+' ♥ / '+a.comments+tt(' 评',' cmt')]);
   } else {
     R.push([bi('生成模型','MODEL'), p.model+' · '+tt(p.type.zh,p.type.en)]);
@@ -3334,6 +3361,7 @@ function refreshCardG(){ const p=PIN.G; if(!p)return;
   R.push([bi('阶段','STAGE'), `${tt(st.zh+' '+st.en,st.en)} ${p.stage}/8`]);
   R.push([bi('分枝 / 后代','BRANCH / SEEDS'), `${p.branches.length} / ${p.children}`]);
   R.push([bi('注意力','ATT'), p.att.toFixed(1)]);
+  R.push([bi('被注视','SEEN FOR'), (p.seenT||0).toFixed(1)+' s']);
   R.push([bi('生成能耗','ENERGY'), `${ev} <span style="opacity:.45">${esrc}</span>`]);
   R.push([bi('潮流','TREND'), tr&&tr.on?(tt('成簇中','clustered')+' ● ×'+tr.n):'—']);
   R.push([bi('生态状态','STATE'), state]);
