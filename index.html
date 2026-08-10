@@ -371,6 +371,7 @@ const TUNE_DEF={
   idleSec:  60,     // 多久无输入 → 算法注视接管
   audioVol: 0.7,    // 被注视的那一个视频的音量（0 = 静音）
   ambVol:   0.5,    // 生态声景：嗡鸣／脉冲／花开，全部合成
+  videoBias:0.35,   // 选中视频的额外概率（0 = 严格按语料里的真实比例）
   dormDie:  240     // 休眠多久后化为数字残骸（真正决定「会不会消亡」的那一档）
 };
 const TUNE_META=[
@@ -388,7 +389,8 @@ const TUNE_META=[
   ['autoGain',  ['算法注视','ALGO GAZE'],    0,   1,   .01,  v=>'×'+v.toFixed(2),'both'],
   ['idleSec',   ['算法接管等待','IDLE→AUTO'],5,   180, 5,    v=>v.toFixed(0)+'s','both'],
   ['audioVol',  ['视频原声','VIDEO SOUND'], 0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both'],
-  ['ambVol',    ['生态声景','AMBIENCE'],     0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both']
+  ['ambVol',    ['生态声景','AMBIENCE'],     0,   1,   .05,  v=>v?Math.round(v*100)+'%':'关 OFF','both'],
+  ['videoBias', ['影像偏好','VIDEO BIAS'],   0,   1,   .05,  v=>v?Math.round(v*100)+'%':'按语料 CORPUS','both']
 ];
 const TUNE=Object.assign({},TUNE_DEF);
 try{ const saved=JSON.parse(localStorage.getItem('ag_tune')||'{}');
@@ -710,6 +712,31 @@ let activePage='bloom';
 const ASSETS=(typeof window!=='undefined'&&window.ATTENTION_GARDEN_ASSETS)||null;
 const ATLAS=[]; let atlasReady=0;
 const ASSET_BUCKET=[]; let ASSET_ALL=[];
+const VIDEO_BUCKET=[], VIDEO_ALL=[], POOLS={};
+/* ---- 不放回抽样 ----
+   原来是每次从桶里随机抓一张：一个桶约 90 条，而同屏要画一百多枚画作，
+   按生日悖论必然大量撞车；同种成丛之后这些重复还全挤在一起。
+   改成发牌：每个池子一副洗好的牌，发完再洗，洗的时候把刚用过的一小段
+   压到末尾，接缝处也不会立刻重复。 */
+const DECKS={};
+function deckTake(name){
+  const pool=POOLS[name];
+  if(!pool||!pool.length)return -1;
+  let d=DECKS[name];
+  if(!d||d.n!==pool.length){
+    d=DECKS[name]={a:pool.slice(), i:0, n:pool.length};
+    for(let i=d.a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));
+      [d.a[i],d.a[j]]=[d.a[j],d.a[i]]; }
+  }
+  if(d.i>=d.a.length){
+    const keep=Math.min(12, d.a.length>>2);
+    const tail=d.a.slice(d.a.length-keep), rest=d.a.slice(0,d.a.length-keep);
+    for(let i=rest.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));
+      [rest[i],rest[j]]=[rest[j],rest[i]]; }
+    d.a=rest.concat(tail); d.i=0;
+  }
+  return d.a[d.i++];
+}
 function hashStr(s){ let h=2166136261;
   for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
   return h>>>0; }
@@ -720,12 +747,18 @@ if(ASSETS&&ASSETS.items&&ASSETS.items.length){
     im.onload=()=>atlasReady++; im.src=src; ATLAS[i]=im; });
   for(let i=0;i<NBUCKET;i++)ASSET_BUCKET.push([]);
   const K=(ASSETS.keys||[]).indexOf('cluster');
+  for(let i=0;i<NBUCKET;i++)VIDEO_BUCKET.push([]);
   ASSETS.items.forEach((it,i)=>{
     ASSET_ALL.push(i);
     // 物种 = 聚类（提示词语义 + 外观），而不是模型名 —— 同种花才是真的相关
     const c=(K>=0&&it[K]!=null) ? it[K] : hashStr(it[8]||('m'+i));
-    ASSET_BUCKET[palBucket(c)].push(i);
+    const b2=palBucket(c);
+    ASSET_BUCKET[b2].push(i);
+    if(it[3]){ VIDEO_ALL.push(i); VIDEO_BUCKET[b2].push(i); }
   });
+  ASSET_BUCKET.forEach((a2,i)=>POOLS['b'+i]=a2);
+  VIDEO_BUCKET.forEach((a2,i)=>POOLS['v'+i]=a2);
+  POOLS.all=ASSET_ALL; POOLS.vall=VIDEO_ALL;
   if(ASSETS.clusters)Object.keys(ASSETS.clusters).forEach(k=>{
     CLUSTER_LABEL[palBucket(+k)]=ASSETS.clusters[k].label||''; });
   console.info(`[Attention Garden] 真实素材 ${ASSETS.items.length} 条 / `
@@ -1176,9 +1209,18 @@ function makeArt(styleId, palIdx){
   }
   if(ASSET_ALL.length){
     const bi2=palIdx!==undefined?palBucket(palIdx):undefined;
-    const bucket=(bi2!==undefined&&ASSET_BUCKET[bi2]&&ASSET_BUCKET[bi2].length)
-      ? ASSET_BUCKET[bi2] : ASSET_ALL;
-    return assetArt(bucket[Math.floor(Math.random()*bucket.length)], palIdx);
+    let name=(bi2!==undefined&&POOLS['b'+bi2]&&POOLS['b'+bi2].length)?('b'+bi2):'all';
+    // 影像偏好：视频是语料里最稀有、单位算力也最贵的一类。
+    // 0 = 严格按语料真实比例；调高只影响"挑哪一张来看"，不改变任何统计数字。
+    if((TUNE.videoBias||0)>0&&VIDEO_ALL.length&&Math.random()<TUNE.videoBias){
+      // 视频本来就稀少，按桶再分每桶只剩几个，抽出来会一直是同几张；
+      // 桶内不足 8 个就退回全局视频池 —— 宁可弱一点的同族性，也不要重复
+      const vb=(bi2!==undefined)?POOLS['v'+bi2]:null;
+      const vn=(vb&&vb.length>=8)?('v'+bi2):'vall';
+      if(POOLS[vn]&&POOLS[vn].length)name=vn;
+    }
+    const idx=deckTake(name);
+    if(idx>=0)return assetArt(idx, palIdx);
   }
   const c=document.createElement('canvas'); c.width=c.height=ASZ;
   const ctx=c.getContext('2d');
