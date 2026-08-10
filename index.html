@@ -1527,7 +1527,7 @@ function refreshCardB(){ const it=PIN.B; if(!it)return;
     if(a.clusterLabel)R.push([bi('语义簇','CLUSTER'), a.clusterLabel, 'col']);
     R.push([bi('生成模型','MODEL'), a.model||'—']);
     if(a.prompt)R.push([bi('提示词','PROMPT'), a.prompt.slice(0,96), 'col']);
-    R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')]);
+    R.push([bi('地层','STRATUM'), a.local?tt('自备素材','local file'):a.stratum+tt(' 年','')]);
     if(a.isVideo)R.push([bi('影像','VIDEO'),
       `${a.frames||16} ${tt('帧','frames')}${a.hasAudio?tt(' · 有声 ♪',' · with sound ♪'):''}`]);
     R.push([bi('平台互动','REACTIONS'), a.local
@@ -3403,7 +3403,9 @@ function refreshCardG(){ const p=PIN.G; if(!p)return;
     if(a.clusterLabel)R.push([bi('语义簇','CLUSTER'), a.clusterLabel, 'col']);
     R.push([bi('生成模型','MODEL'), a.model||'—']);
     if(a.prompt)R.push([bi('提示词','PROMPT'), a.prompt.slice(0,96), 'col']);
-    R.push([bi('地层','STRATUM'), a.stratum+tt(' 年','')+(a.isVideo?tt(' · 视频',' · video'):'')]);
+    R.push([bi('地层','STRATUM'),
+      (a.local?tt('自备素材','local file'):a.stratum+tt(' 年',''))
+      +(a.isVideo?tt(' · 视频',' · video'):'')]);
     if(a.isVideo)R.push([bi('影像','VIDEO'),
       `${a.frames||16} ${tt('帧','frames')}${a.hasAudio?' ♪':''} · `
       +(p._lit?tt('播放中','playing'):tt('注视即播放','plays on gaze'))]);

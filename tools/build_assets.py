@@ -346,14 +346,19 @@ def main():
     order = np.argsort(lab, kind="stable")   # 同簇相邻密铺
     div_all = CL.diversity(X)
     dup = CL.near_dupe_rate(sigs)
+    # 地层可能不是年份（自备素材记为"自备"），一律按字符串分组
+    def stratum_key(r):
+        v = r.get("stratum")
+        return str(v) if v not in (None, "") else "2026"
+
     strata = {}
     for r, l in zip(keep, lab):
-        strata.setdefault(int(r.get("stratum") or 2026), []).append(l)
+        strata.setdefault(stratum_key(r), []).append(l)
     div_by_stratum = {}
     for st in strata:
-        idxs = [i for i, r in enumerate(keep) if int(r.get("stratum") or 2026) == st]
+        idxs = [i for i, r in enumerate(keep) if stratum_key(r) == st]
         if len(idxs) >= 8:
-            div_by_stratum[str(st)] = CL.diversity(X[idxs])
+            div_by_stratum[st] = CL.diversity(X[idxs])
 
     # ---------- 第三遍：密铺图集 ----------
     print("\n[3/3] 密铺图集")
@@ -373,7 +378,7 @@ def main():
         items.append([
             ci, x, y,
             1 if r["type"] == "video" else 0,
-            int(r.get("stratum") or 2026),
+            stratum_key(r),                       # 年份或"自备"，前端只当标签用
             int(r.get("likes") or 0), int(r.get("comments") or 0),
             int(r.get("_frames") or 0),
             (r.get("model") or "")[:60],
@@ -422,7 +427,8 @@ def main():
     if div_all is not None:
         lines.append(f"整体多样性（平均两两距离，越低越同质）：{div_all:.4f}")
     for k in sorted(div_by_stratum):
-        lines.append(f"  {k} 年地层：{div_by_stratum[k]:.4f}")
+        tag = f"{k} 年地层" if k.isdigit() else f"{k}素材"
+        lines.append(f"  {tag}：{div_by_stratum[k]:.4f}")
     if "2022" in div_by_stratum and "2026" in div_by_stratum:
         d = (div_by_stratum["2026"] - div_by_stratum["2022"]) / div_by_stratum["2022"] * 100
         lines.append(f"  → 2026 相对 2022 {d:+.1f}%"
