@@ -22,7 +22,7 @@
     python3 tools/build_assets.py
     python3 tools/build_assets.py --k 8 --tile 128 --atlas 2048 --max 1600
 """
-import argparse, json, math, os, shutil, subprocess, sys
+import argparse, json, math, os, re, shutil, subprocess, sys
 
 try:
     from PIL import Image
@@ -88,15 +88,47 @@ def center_crop(im, size):
     return im.resize((size, size), LANCZOS)
 
 
+FFMPEG = None
+FFSTAT = {"videos": 0, "ok": 0, "fallback": 0}
+
+
+def find_ffmpeg(explicit=None):
+    """依次找：显式指定 → PATH → pip 的 imageio-ffmpeg → conda/homebrew 常见位置。
+    找不到不是致命错误，但必须让人看见 —— 静默退化成首帧是最坏的情况。"""
+    global FFMPEG
+    cands = []
+    if explicit:
+        cands.append(explicit)
+    w = shutil.which("ffmpeg")
+    if w:
+        cands.append(w)
+    try:
+        import imageio_ffmpeg
+        cands.append(imageio_ffmpeg.get_ffmpeg_exe())
+    except Exception:
+        pass
+    cands += [
+        os.path.join(sys.prefix, "bin", "ffmpeg"),          # conda 当前环境
+        "/opt/homebrew/bin/ffmpeg",                          # Apple Silicon homebrew
+        "/usr/local/bin/ffmpeg",                             # Intel homebrew
+        os.path.expanduser("~/bin/ffmpeg"),
+    ]
+    for c in cands:
+        if c and os.path.exists(c) and os.access(c, os.X_OK):
+            FFMPEG = c
+            return c
+    return None
+
+
 def video_frames(path, n, size):
-    if not shutil.which("ffmpeg"):
+    if not FFMPEG:
         return []
     tmp = "data/.frames"
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp, exist_ok=True)
     try:
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-i", path,
+            [FFMPEG, "-v", "error", "-i", path,
              "-vf", f"select='not(mod(n\\,3))',scale={size}:{size}:"
                     f"force_original_aspect_ratio=increase,crop={size}:{size}",
              "-vsync", "vfr", "-frames:v", str(n), f"{tmp}/f%03d.jpg"],
@@ -166,6 +198,8 @@ def main():
     ap.add_argument("--k", type=int, default=8, help="物种数（对应花园里的八个物种位）")
     ap.add_argument("--w-prompt", type=float, default=0.62,
                     help="提示词通道权重（其余给外观）")
+    ap.add_argument("--ffmpeg", default=None,
+                    help="ffmpeg 可执行文件路径（默认自动查找）")
     ap.add_argument("--extra-dir", default="assets/incoming",
                     help="自备图片目录：里面的图会和爬到的素材一起打进图集与聚类")
     args = ap.parse_args()
@@ -182,6 +216,20 @@ def main():
     if not recs:
         sys.exit("data/meta.jsonl 为空，assets/incoming 也没有图片 —— "
                  "先跑 fetch_civitai.py，或把自己的图片放进 assets/incoming/")
+    nvid = sum(1 for r in recs if r.get("type") == "video")
+    find_ffmpeg(args.ffmpeg)
+    if nvid:
+        if FFMPEG:
+            print(f"ffmpeg: {FFMPEG}")
+        else:
+            print("!" * 62)
+            print(f"!! 没找到 ffmpeg —— {nvid} 个视频只会取首帧，在页面里不会动。")
+            print("!! 装一个（三选一，都不需要管理员权限）：")
+            print("!!   conda install -y -c conda-forge ffmpeg")
+            print("!!   pip install imageio-ffmpeg      # 自带一个二进制，本脚本会自动找到")
+            print("!!   brew install ffmpeg")
+            print("!! 装完重跑本脚本即可；也可以用 --ffmpeg /路径/ffmpeg 直接指定。")
+            print("!" * 62)
     print(f"素材 {len(recs)} 条\n")
     os.makedirs(ATLAS_DIR, exist_ok=True)
     os.makedirs(SHEET_DIR, exist_ok=True)
@@ -193,7 +241,12 @@ def main():
     for i, r in enumerate(recs):
         try:
             if r["type"] == "video":
+                FFSTAT["videos"] += 1
                 fr = video_frames(r["file"], SHEET_COLS * SHEET_ROWS, tile)
+                if fr:
+                    FFSTAT["ok"] += 1
+                else:
+                    FFSTAT["fallback"] += 1
                 if fr:
                     sheet = Image.new("RGB", (tile * SHEET_COLS, tile * SHEET_ROWS))
                     for j, f in enumerate(fr):
@@ -331,6 +384,13 @@ def main():
     size = sum(os.path.getsize(a) for a in atlases) / 1e6
     print("\n" + rep)
     print(f"\n图集合计 {size:.1f} MB  清单 {os.path.getsize(MANIFEST)/1e3:.0f} KB")
+    if FFSTAT["videos"]:
+        sd = sum(os.path.getsize(os.path.join(SHEET_DIR, f))
+                 for f in os.listdir(SHEET_DIR)) / 1e6 if os.path.isdir(SHEET_DIR) else 0
+        print(f"视频 {FFSTAT['videos']} 个：抽帧成功 {FFSTAT['ok']}，"
+              f"退化为首帧 {FFSTAT['fallback']}；精灵图合计 {sd:.1f} MB")
+        if FFSTAT["fallback"] and not FFMPEG:
+            print("  ↑ 全部退化是因为没有 ffmpeg，装好后重跑本脚本即可（图片部分不会重下）")
     print(f"报告已存 {REPORT}")
 
 
