@@ -453,6 +453,28 @@ const palBucket=i=>((i%NBUCKET)+NBUCKET)%NBUCKET;
 /* 任意 css 颜色（hex 或 rgb()）→ [r,g,b]；供压暗/提亮混色使用 */
 function anyRgb(c){ if(c[0]==='#')return hex2rgb(c);
   const m=String(c).match(/(\d+)\D+(\d+)\D+(\d+)/); return m?[+m[1],+m[2],+m[3]]:[128,128,128]; }
+/* hexA 只吃十六进制；thc() 去色后返回的是 rgb()，所以另备一个通吃的 */
+function anyA(c,a){ const q=anyRgb(c); return `rgba(${q[0]},${q[1]},${q[2]},${a})`; }
+/* ---- 柔光点 ----
+   光晕、散焦光斑、注视余迹都要一张"中间亮、边缘化开"的图。
+   每帧现做径向渐变太贵（一帧上百次），所以按颜色缓存成 64² 的精灵，
+   之后只是 drawImage 缩放，代价接近零。 */
+const SOFT={};
+function softSprite(col){
+  if(SOFT[col])return SOFT[col];
+  const N=64, t=document.createElement('canvas'); t.width=t.height=N;
+  const c=t.getContext('2d'), g=c.createRadialGradient(N/2,N/2,0,N/2,N/2,N/2);
+  g.addColorStop(0,anyA(col,1)); g.addColorStop(.34,anyA(col,.46));
+  g.addColorStop(.68,anyA(col,.13)); g.addColorStop(1,anyA(col,0));
+  c.fillStyle=g; c.fillRect(0,0,N,N);
+  SOFT[col]=t; return t;
+}
+function softDot(ctx,x,y,r,col,a){
+  if(!(a>.004)||!(r>0))return;
+  ctx.globalAlpha=Math.min(1,a);
+  ctx.drawImage(softSprite(col),x-r,y-r,r*2,r*2);
+  ctx.globalAlpha=1;
+}
 function mixC(a,b,t){ const A=anyRgb(a),B=anyRgb(b);
   return `rgb(${Math.round(lerp(A[0],B[0],t))},${Math.round(lerp(A[1],B[1],t))},${Math.round(lerp(A[2],B[2],t))})`; }
 const shade=(c,t)=>mixC(c,'#3A3B38',t);   // 色块的同系深一阶（代替描边）
@@ -575,6 +597,24 @@ const THEMES={
     net:'210,210,210', netHot:'255,255,255',
     root:['#4A4A4A','#242424','#5E5E5E','#333333'] },
 
+  /* C · 梦瀑：数据瀑布的坠落感留着，但底子是灰黑而不是纯黑，
+     并且不去色 —— 光流分了三重景深（散焦光斑／光流／细尘），
+     植物照旧鲜艳，还会带一层柔光晕，坠落感与花的颜色同时在场。 */
+  dreamfall:{ zh:'梦瀑', en:'DREAMFALL', dark:true, sun:false, mono:false,
+    deco:'fall', dream:true, glow:true, clouds:false,
+    fallCols:['#8FB6DE','#B5A2E0','#7FD9C6','#E6CFA0'],
+    paper:'#0C0D10', sky:['#08090B','#0E1013','#15181C'],
+    dots:['rgba(170,195,230,.032)','rgba(150,165,195,.020)'],
+    cloud:'rgba(34,40,50,.5)', cloudSh:'rgba(0,0,0,.45)',
+    hills:[['rgba(120,150,200,.05)','rgba(160,195,245,.20)'],
+           ['rgba(150,140,200,.07)','rgba(185,170,235,.24)']],
+    field:['#191C21','#161A1E','#13161A'], contour:'rgba(175,195,225,.13)',
+    ridge:['#1E2228','#1A1E23','#171A1F','#14171B'],
+    ridgeHi:'rgba(200,220,255,.10)', ridgeDot:'rgba(180,205,240,.18)',
+    soil:['#181B20','#14171B','#111318','#0D0F13','#0A0B0E','#07080A'], soilBot:'#060709',
+    net:'150,180,235', netHot:'215,230,255',
+    root:['#3C4658','#1E242E','#4E5A70','#2A323F'] },
+
   /* A · 光流点亮：整幅去色，只有注视的泡泡里恢复颜色，视频也只在那里动 */
   lumen:{ zh:'光流点亮', en:'LUMEN', dark:true, sun:false, mono:false, deco:'fall', lit:true, clouds:false,
     paper:'#08090B', sky:['#07080A','#0A0C0F','#0E1114'],
@@ -613,6 +653,7 @@ function setTheme(k){
   document.body.dataset.th=k;
   document.body.classList.toggle('darkTh',!!TH.dark);
   HALF=null; if(typeof xB!=='undefined'&&xB)xB._half=null; if(typeof xG!=='undefined'&&xG)xG._half=null;
+  if(typeof BFALL!=='undefined')BFALL.length=0;   // 信息流的坠落层跟着主题重建
   if(typeof G!=='undefined')G.soilTex=null;      // 土层纹理按主题重建
   if(typeof rebuildDeco==='function')rebuildDeco();
 }
@@ -1260,7 +1301,8 @@ function wobble(ctx,x,y,r,seed,amp){
    有人时是观众的注视；无人时算法接管，自行游走浇灌。
    两页共用；坐标为屏幕空间。
    ============================================================ */
-const GAZE={ mode:'auto', x:0, y:0, tx:0, ty:0, retgt:0, idle:0, r:96, present:false };
+const GAZE={ mode:'auto', x:0, y:0, tx:0, ty:0, retgt:0, idle:0, r:96, present:false,
+             trail:[], tAcc:0 };
 function gazeInput(x,y){ GAZE.x=x; GAZE.y=y; GAZE.tx=x; GAZE.ty=y;
   GAZE.idle=0; GAZE.present=true;
   if(GAZE.mode!=='visitor'){ GAZE.mode='visitor'; syncGazeTag(); } }
@@ -1284,6 +1326,33 @@ function updateGaze(dt){
     GAZE.x=lerp(GAZE.x,GAZE.tx,dt*1.5)+Math.sin(perfNow()*.0009)*.5;
     GAZE.y=lerp(GAZE.y,GAZE.ty,dt*1.5)+Math.cos(perfNow()*.0011)*.4;
   }
+  /* 注视余迹：看过的地方留下一段慢慢散掉的光。
+     作品说的是"被看见才有能量"，那么注视本身也该留下痕迹。 */
+  GAZE.tAcc+=dt;
+  if(GAZE.tAcc>.05){
+    GAZE.tAcc=0;
+    const tr=GAZE.trail, last=tr[tr.length-1];
+    if(!last||Math.hypot(last.x-GAZE.x,last.y-GAZE.y)>3.2){
+      tr.push({x:GAZE.x, y:GAZE.y, life:1, r:gazeR()*R(.30,.46)});
+      if(tr.length>46)tr.shift();
+    }
+  }
+  for(let i=GAZE.trail.length-1;i>=0;i--){
+    const p=GAZE.trail[i]; p.life-=dt*.27;
+    if(p.life<=0)GAZE.trail.splice(i,1);
+  }
+}
+/* 余迹垫在泡泡下面画：亮场用正常混合免得发灰，暗场用加色更像残留的光 */
+function drawGazeTrail(ctx){
+  const tr=GAZE.trail; if(!tr.length)return;
+  const auto=GAZE.mode==='auto';
+  const col=auto?(TH.dark?'#8AAECD':'#5D8FB8'):(TH.dark?'#F2C878':'#B8781C');
+  const k=(TH.dark?.135:.052)*(auto?.6:1);
+  ctx.save();
+  if(TH.dark)ctx.globalCompositeOperation='lighter';
+  tr.forEach(p=>{ const l=p.life*p.life;
+    softDot(ctx,p.x,p.y,p.r*(1.7-l*.6),col,l*k); });
+  ctx.restore();
 }
 function perfNow(){ return performance.now(); }
 /* 算法的偏好：花园里优先照顾"快要成势"或"濒临休眠"的植株；
@@ -1550,11 +1619,59 @@ function reseedBloom(){
   for(let i=0,n=RI(14,24);i<n;i++){ const it=spawnItem();
     it.att=R(0,12); it.born=Date.now()-R(0,18000)|0; it.a=1; }
 }
+/* ---- 信息流页的坠落层 ----
+   花园那边的瀑布跟着世界坐标走；这边镜头会推拉，所以用屏幕坐标自成一层，
+   像隔着一层落雨的玻璃看这堆图。只在梦瀑主题下出现。 */
+const BFALL=[];
+function buildBloomFall(){
+  BFALL.length=0;
+  const rnd=sRand(551133);
+  for(let i=0;i<3;i++) BFALL.push({kind:'curt', fx:rnd(), sp:.006+rnd()*.010,
+    wd:180+rnd()*300, amp:20+rnd()*44, a:.026+rnd()*.030, ci:(rnd()*4)|0, ph:rnd()*7});
+  for(let i=0;i<86;i++){ const zz=rnd();
+    BFALL.push({kind:'str', z:zz, fx:rnd(), fy:rnd(), len:30+zz*150,
+      sp:.045+zz*.30, px:1+zz*2.2, a:.10+(1-zz)*.24, ci:(rnd()*4)|0,
+      sw:5+rnd()*20, ph:rnd()*7}); }
+  for(let i=0;i<70;i++) BFALL.push({kind:'dust', fx:rnd(), fy:rnd(),
+    r:1+rnd()*1.9, sp:.020+rnd()*.070, a:.12+rnd()*.22, ci:(rnd()*4)|0, ph:rnd()*7});
+}
+function drawBloomFall(ctx,w,h){
+  if(!TH.dream)return;
+  if(!BFALL.length)buildBloomFall();
+  const cols=TH.fallCols||['#FFFFFF'], t=B.t;
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  BFALL.forEach(d=>{
+    const col=cols[d.ci%cols.length];
+    if(d.kind==='curt'){
+      const cx=((d.fx+t*d.sp)%1.35-.18)*w, SEG=6, segH=h/SEG;
+      for(let s=0;s<SEG;s++){ const t2=(s+.5)/SEG;
+        const x=cx+Math.sin(t2*3.1+t*.28+d.ph)*d.amp;
+        ctx.globalAlpha=d.a*(Math.sin(t2*Math.PI)*.8+.2);
+        ctx.drawImage(softSprite(col), x-d.wd/2, segH*s-segH*.6, d.wd, segH*2.2); }
+      ctx.globalAlpha=1; return;
+    }
+    const y=((d.fy+t*d.sp)%1.3-.15)*h;
+    if(d.kind==='dust'){
+      if(y<-20||y>h+20)return;
+      softDot(ctx,d.fx*w+Math.sin(t*.3+d.ph)*9,y,d.r*2.3,col,d.a*.5); return;
+    }
+    if(y>h+40||y+d.len<-40)return;
+    const x=Math.round((d.fx*w+Math.sin(t*.22+d.ph)*d.sw)/d.px)*d.px;
+    ctx.fillStyle=col;
+    for(let k=0;k<d.len;k+=d.px*1.4){ const f=1-k/d.len;
+      ctx.globalAlpha=Math.min(.72,d.a*f*f*2.1);
+      if((k*7+d.fx*100|0)%4) ctx.fillRect(x,y+k,d.px,d.px*1.3); }
+    ctx.globalAlpha=1;
+    softDot(ctx,x+d.px*.5,y+d.len,d.px*(2.2+d.z*3.2),col,.26+d.z*.18);
+  });
+  ctx.restore();
+}
 function renderBloom(){
   const ctx=xB,w=cB._w,h=cB._h,z=B.cam.z;
   ctx.save();
   ctx.fillStyle=TH.paper; ctx.fillRect(0,0,w,h);
   halftoneFill(ctx,0,0,w,h);
+  drawBloomFall(ctx,w,h);
   ctx.translate(w/2,h/2); ctx.scale(z,z); ctx.translate(-B.cam.x,-B.cam.y);
   const v=viewBounds();
 
@@ -1641,6 +1758,7 @@ function renderBloom(){
   });
   ctx.restore();
 
+  drawGazeTrail(ctx);
   drawGazeRing(ctx,GAZE.x,GAZE.y);
   postFX(ctx,cB);
 }
@@ -1751,7 +1869,7 @@ const G={
   parts:{sparks:[],petals:[],motes:[],leaves:[]},
   net:[], edges:[], outEdges:[], colony:{},
   trends:{}, trendAcc:0, sowAcc:0, metaAcc:0, powAcc:0,
-  sel:null, selNode:null, hoverNode:null, symbols:[], clouds:[], flora:[], deco:[], drifters:[],
+  sel:null, selNode:null, hoverNode:null, symbols:[], clouds:[], flora:[], deco:[], drifters:[], rings:[],
   soilTex:null, soilW:0
 };
 
@@ -1848,8 +1966,30 @@ function rebuildDeco(){
     for(let i=0;i<70;i++) G.deco.push({kind:'ray', fx:rnd(), wy:-60-rnd()*460,
       len:10+rnd()*46, sp2:20+rnd()*70, ci:Math.floor(rnd()*4)});
   } else if(TH.deco==='fall'){
-    for(let i=0;i<130;i++) G.deco.push({fx:rnd(), wy:-60-rnd()*520, len:16+rnd()*90,
-      sp:16+rnd()*80, px:1.4+rnd()*2.0, a:.12+rnd()*.34});
+    /* 梦瀑分三重景深：散焦光斑（远、大、糊）／光流（中）／细尘（近、慢）。
+       z 是景深，越近越大越糊越淡 —— 坠落感来自这三层速度不同。 */
+    const dream=!!TH.dream, N=dream?178:130;
+    for(let i=0;i<N;i++){
+      const z=rnd();
+      G.deco.push({kind:'str', z, fx:rnd(), wy:-40-rnd()*700,
+        len: dream? 34+z*190 : 16+rnd()*90,
+        sp:  dream? 10+z*78  : 16+rnd()*80,
+        px:  dream? 1+z*2.4  : 1.4+rnd()*2.0,
+        a:   dream? .13+(1-z)*.30 : .12+rnd()*.34,
+        ci:Math.floor(rnd()*4), sw:6+rnd()*24, ph:rnd()*7});
+    }
+    if(dream){
+      // 光幕：瀑布的"水体"。没有它，坠落只是一堆孤立的短划
+      for(let i=0;i<5;i++) G.deco.push({kind:'curt', fx:rnd(), sp:.0035+rnd()*.008,
+        wd:130+rnd()*260, amp:18+rnd()*40, a:.030+rnd()*.042,
+        ci:Math.floor(rnd()*4), ph:rnd()*7});
+      for(let i=0;i<46;i++) G.deco.push({kind:'boke', z:rnd(), fx:rnd(),
+        wy:-60-rnd()*720, r:6+rnd()*19, sp:5+rnd()*22, a:.055+rnd()*.10,
+        ci:Math.floor(rnd()*4), sw:16+rnd()*46, ph:rnd()*7});
+      for(let i=0;i<110;i++) G.deco.push({kind:'dust', fx:rnd(),
+        wy:-30-rnd()*740, r:.9+rnd()*1.8, sp:3+rnd()*13, a:.14+rnd()*.24,
+        ci:Math.floor(rnd()*4), ph:rnd()*7});
+    }
   }
 }
 rebuildDeco();
@@ -2071,6 +2211,7 @@ function gazePickPlant(){
 function reseedGarden(){
   G.plants.length=0; G.seedsF.length=0; G.flies.length=0; G.settled.length=0;
   G.parts.sparks.length=0; G.parts.petals.length=0; G.parts.motes.length=0; G.parts.leaves.length=0;
+  G.rings.length=0; GAZE.trail.length=0;
   G.trends={}; G.sel=null; G.colony={}; G.selPath=null; G.selPathFor=null;
   buildFlora();
   const order=SPECIES.map((_,i)=>i);
@@ -2198,6 +2339,9 @@ function updateGarden(dt){
         if(p.stage>=4) buildBranches(p);
         buildRoots(p);
         for(let k=0;k<8;k++) G.parts.sparks.push({x:x+R(-22,22), wy:rowWy-p.h*p.rs-R(0,26), vy:-R(10,24), life:1});
+        // 进阶的那一下：一圈扩散出去的光环，让"长大了"这件事在视频里看得见
+        G.rings.push({x, wy:rowWy-p.h*p.rs-p.head*.32*p.rs, r0:9*p.rs,
+          r1:(58+p.head*1.15)*p.rs*(p.stage>=5?1.25:1), life:1, c:p.sp.c0});
         spawnPulse('signal',p);
         sndBloom(p.si,p.stage);
         if(p.stage===5) toast(tt(p.id+' 初绽 BLOOM · '+sp.zh,p.id+' first BLOOM · '+sp.en));
@@ -2299,6 +2443,8 @@ function updateGarden(dt){
     s.wy+=s.vy*dt; s.vy+=dt*8; s.life-=dt*1.4; if(s.life<=0)P.sparks.splice(i,1); }
   for(let i=P.motes.length-1;i>=0;i--){ const m=P.motes[i];
     m.wy+=m.vy*dt; m.life-=dt*.5; if(m.life<=0)P.motes.splice(i,1); }
+  for(let i=G.rings.length-1;i>=0;i--){ const rg=G.rings[i];
+    rg.life-=dt*.8; if(rg.life<=0)G.rings.splice(i,1); }
   for(let i=P.petals.length-1;i>=0;i--){ const pt=P.petals[i];
     pt.x+=pt.vx*dt+Math.sin(pt.rot*2)*8*dt; pt.wy+=pt.vy*dt; pt.rot+=pt.vr*dt;
     if(pt.wy>=pt.landWy){ G.settled.push({x:pt.x,wy:pt.landWy,c:pt.c,s:2.6}); P.petals.splice(i,1); } }
@@ -2999,8 +3145,60 @@ function renderGarden(){
     ctx.globalAlpha=1;
   }
   if(false){
-} else if(TH.deco==='fall'){
+} else if(TH.deco==='fall'&&TH.dream){
+    /* 梦瀑：三层不同速度的坠落物，全部加色混合，颜色偏冷但不去色。
+       远的大而糊、近的细而慢，视差把"深度"做出来 —— 这才是梦幻感的来源，
+       而不是把亮度调低。 */
+    const cols=TH.fallCols||['#FFFFFF'];
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    /* 光幕：瀑布的水体。用拉长的柔光精灵一节一节叠成一条会弯的光柱 ——
+       四周都是化开的，不会像多边形那样露出硬边。 */
+    G.deco.forEach(d2=>{ if(d2.kind!=='curt')return;
+      const cx=((d2.fx+G.t*d2.sp)%1.35-.18)*w;
+      const top=gyP(-740,.12), bot=gyP(-20,.26);
+      if(bot<0||top>h)return;
+      const col=cols[d2.ci%cols.length], SEG=6, segH=(bot-top)/SEG;
+      for(let s2=0;s2<SEG;s2++){
+        const t2=(s2+.5)/SEG, y2=top+segH*s2;
+        const x2=cx+Math.sin(t2*3.1+G.t*.28+d2.ph)*d2.amp;
+        // 上下两端渐隐，中段最亮
+        const fade=Math.sin(Math.min(1,t2*1.15)*Math.PI)*.85+.15;
+        ctx.globalAlpha=d2.a*fade;
+        ctx.drawImage(softSprite(col), x2-d2.wd/2, y2-segH*.6, d2.wd, segH*2.2);
+      }
+      ctx.globalAlpha=1;
+    });
+    G.deco.forEach(d2=>{ if(d2.kind!=='boke')return;      // 散焦光斑
+      const y0=gyP(d2.wy+((G.t*d2.sp)%780),.34);
+      if(y0<-70||y0>h+70)return;
+      const x=d2.fx*w+Math.sin(G.t*.16+d2.ph)*d2.sw;
+      softDot(ctx,x,y0,d2.r*(1+d2.z*1.7),cols[d2.ci%cols.length],d2.a);
+    });
+    G.deco.forEach(d2=>{ if(d2.kind!=='str')return;       // 光流
+      const y0=gyP(d2.wy+((G.t*d2.sp)%700),.5);
+      if(y0>h+40||y0+d2.len<-40)return;
+      const col=cols[d2.ci%cols.length];
+      const x=Math.round((d2.fx*w+Math.sin(G.t*.22+d2.ph)*d2.sw)/d2.px)*d2.px;
+      ctx.fillStyle=col;
+      const step=d2.px*1.4;
+      for(let k=0;k<d2.len;k+=step){
+        const f=1-k/d2.len;
+        ctx.globalAlpha=Math.min(.8,d2.a*f*f*2.2);
+        if((k*7+d2.fx*100|0)%4) ctx.fillRect(x,y0+k,d2.px,d2.px*1.3);
+      }
+      ctx.globalAlpha=1;
+      softDot(ctx,x+d2.px*.5,y0+d2.len,d2.px*(2.4+d2.z*3.6),col,.30+d2.z*.20);
+    });
+    G.deco.forEach(d2=>{ if(d2.kind!=='dust')return;      // 细尘
+      const y0=gyP(d2.wy+((G.t*d2.sp)%740),.42);
+      if(y0<-24||y0>h+24)return;
+      const x=d2.fx*w+Math.sin(G.t*.3+d2.ph)*9;
+      softDot(ctx,x,y0,d2.r*2.3,cols[d2.ci%cols.length],d2.a*.55);
+    });
+    ctx.restore();
+  } else if(TH.deco==='fall'){
     G.deco.forEach(d2=>{
+      if(d2.kind&&d2.kind!=='str')return;
       const x=Math.round(d2.fx*w/d2.px)*d2.px;
       const y0=gyP(d2.wy+((G.t*d2.sp)%620),.5);
       if(y0>h+40||y0+d2.len<-40)return;
@@ -3243,6 +3441,14 @@ function renderGarden(){
       ctx.translate(x,baseY); ctx.scale(p.rs,p.rs);
       ctx.globalAlpha=row.a;
       if(p.state==='dying'){ ctx.rotate(p.dieT*.85*p.bend); ctx.scale(1,1-p.dieT*.85); ctx.globalAlpha=row.a*(1-p.dieT*.7); }
+      /* 暗场主题：花头垫一层柔光晕，注意力越多越亮 —— 在坠落的冷光里，
+         彩色的花才立得住，而"被看见的更亮"正好是这件作品的规则。 */
+      if(TH.glow&&p.head>6&&p.state==='alive'){
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        const gl=clamp(.09+p.att*.009,.09,.30)*(1-p.wilt*.72)*row.a;
+        softDot(ctx,0,-p.h-p.head*.30,(p.head+34)*.95,p.sp.c0,gl);
+        ctx.restore();
+      }
       drawPlant(ctx,p);
       ctx.restore(); ctx.globalAlpha=1;
       // 屏幕空间标注：只留图形，不再印说明文字
@@ -3257,6 +3463,21 @@ function renderGarden(){
         ctx.textAlign='left';
       }
     });
+  }
+  // 进阶光环：一圈很快扩散、很快消失的光，标记"这一株刚长大一级"
+  if(G.rings.length){
+    ctx.save();
+    if(TH.dark)ctx.globalCompositeOperation='lighter';
+    G.rings.forEach(rg=>{
+      const y=gy(rg.wy); if(y<-90||y>h+90)return;
+      const e=1-rg.life, ease=1-(1-e)*(1-e);
+      const rr=rg.r0+(rg.r1-rg.r0)*ease, l=rg.life*rg.life, col=thc(rg.c);
+      ctx.strokeStyle=anyA(col,l*(TH.dark?.5:.30));
+      ctx.lineWidth=1.2+rg.life*1.5;
+      ctx.beginPath(); ctx.arc(rg.x,y,rr,0,7); ctx.stroke();
+      softDot(ctx,rg.x,y,rr*.55,col,l*(TH.dark?.11:.05));
+    });
+    ctx.restore();
   }
   // 落籽 / 粒子 / 蝴蝶
   G.seedsF.forEach(sd=>{ const y=gy(sd.wy), ss=15;
@@ -3283,6 +3504,7 @@ function renderGarden(){
     ctx.fillStyle='#7A5A3A'; ctx.fillRect(-2.5,-1.5,5,3); ctx.restore(); });
   G.flies.forEach(f=>{ const y=gy(f.wy); if(y>-30&&y<h+30)drawButterfly(ctx,f,y); });
 
+  drawGazeTrail(ctx);
   drawGazeRing(ctx,GAZE.x,GAZE.y);
   postFX(ctx,cG);
 }
