@@ -9,3 +9,6 @@ assets/audio/
 # 上传别人的作品到公开仓库，和在展厅里放几秒，是两件性质不同的事。
 assets/incoming/*
 !assets/incoming/README.txt
+
+# 部署产物
+dist/

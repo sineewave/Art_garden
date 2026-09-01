@@ -76,6 +76,17 @@ window.ATTENTION_GARDEN_IMAGES = [
 
 信息流对象与花心画作会自动改用真实图片；无法加载时回退为内置九种程序化纹样（十字绣 / 文字漩涡 / 线绘细胞 / 相册小照 / 织锦方格 / 同心圆环 / 剪纸花卉 / 层叠色条 / 卵石标本），每个物种绑定其中一种，保证同种同貌。
 
+## 部署上线
+
+打包成可上传的目录，再传到 HKUST iHost：
+
+```bash
+bash tools/build_site.sh      # → dist/public_html/
+bash tools/deploy_ihost.sh    # 需先连 HKUST VPN
+```
+
+详见 [DEPLOY.md](DEPLOY.md)（含 FileZilla 手动上传步骤与排错）。
+
 ## 调试参数
 
 `?skip=1` 跳过开场 · `&page=garden` 直达花园 · `&cam=430` 相机深度 · `&warp=140` 花园快进秒数 · `&gaze=visitor` 强制观众模式 · `&vt=1` 虚拟时间驱动（无头截图用）· `&probe=1` 标题栏输出生态计数
