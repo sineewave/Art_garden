@@ -1,0 +1,408 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Genome System</title>
+<style>
+  body{margin:0;background:#EDEAE3;color:#4A4338;
+       font:11px ui-monospace,Menlo,monospace;padding:16px}
+  body.dk{background:#0B0D10;color:#9A958A}
+  h1{font:600 12px/1.5 ui-monospace,monospace;letter-spacing:.2em;
+     color:#8A8578;margin:0 0 14px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+  .cell{background:#F6F3EA;border:1px solid #DCD6C8;padding:7px}
+  body.dk .cell{background:#14171B;border-color:#242A30}
+  canvas{display:block;width:100%;height:auto}
+  .gene{margin-top:5px;color:#8A8578;line-height:1.5;font-size:9px}
+  .gene b{color:#6E8A5A;font-weight:400}
+  body.dk .gene b{color:#9DD3A8}
+  .plan{display:inline-block;border:1px solid currentColor;padding:0 4px;
+        border-radius:2px;opacity:.75;margin-right:4px}
+</style>
+<h1>部件语法 · 五种体制 · 器官可组合 · 全场深度排序</h1>
+<div class="grid" id="g"></div>
+<script>
+const TAU = Math.PI*2, EL = 0.36;
+const DARK = new URLSearchParams(location.search).has('dark');
+if (DARK) document.body.className = 'dk';
+
+/* 每个基因独立哈希，互不相关 */
+function hash01(str){
+  let h = 2166136261>>>0;
+  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,16777619)>>>0; }
+  return h/4294967296;
+}
+
+const PLANS = ['bowl','tiered','fork','radial','spike'];
+const EDGES = ['smooth','scallop','tooth','fringe'];
+const FILLS = ['fan','parallel','cross','none'];
+
+function genome(seed){
+  const H = n => hash01(seed+'|'+n);
+  const p = (n,a,b) => a + H(n)*(b-a);
+  const pick = (n,arr) => arr[Math.floor(H(n)*arr.length)%arr.length];
+  return {
+    seed,
+    plan:    pick('plan', PLANS),
+    edge:    pick('edge', EDGES),
+    fill:    pick('fill', FILLS),
+
+    tiers:   Math.round(p('tiers',2,4)),       // 层数（tiered/spike 用）
+    petals:  Math.round(p('petals',3,11)),     // 每轮瓣数    ← 聚类簇
+    ribs:    Math.round(p('ribs',4,14)),       // 筋脉数      ← 图像复杂度
+    scallop: Math.round(p('scallop',2,9)),     // 边缘齿数    ← 边缘高频
+    arcs:    Math.round(p('arcs',0,4)),        // 蕾丝横档
+    struts:  H('struts') > .45,                // 筋脉间小横撑
+    dbl:     H('dbl') > .4,                    // 双重轮廓
+
+    open:    p('open',0.2,0.95),               // 开合        ← 被注视时长
+    droop:   p('droop',-0.2,0.8),              // 下垂        ← 构图重心
+    len:     p('len',0.6,1.3),                 // 瓣长
+    wid:     p('wid',0.10,0.42),               // 瓣宽
+    tipN:    p('tipN',0.6,2.0),                // 尖端锐度
+
+    stamens: Math.round(p('stamens',0,28)),    // 花丝数      ← 点赞数
+    stamLen: p('stamLen',0.5,1.9),
+    stamCurl:p('stamCurl',-0.2,1.3),
+    collar:  Math.round(p('collar',0,16)),     // 托座珠数    ← 评论数
+    terminal:pick('terminal',['bead','star','cluster','curl','none']),
+
+    // 排列方式：决定器官怎么沿轴分布。同一体制靠它拉开差异
+    phyllo:  pick('phyllo',['whorl','spiral','alternate','opposite']),
+    taper:   p('taper',-0.5,0.8),              // 沿轴渐缩(+)或渐放(-)
+    armSpread:p('armSpread',0.18,0.62),        // 分叉张开度
+    arms:    Math.round(p('arms',2,5)),        // 叉数
+    tilt0:   p('tilt0',0.04,0.34),             // 器官基础倾角（π 的倍数）
+
+    axisLen: p('axisLen',0.5,2.0),
+    axisBend:p('axisBend',-0.3,0.3),
+    hue:     p('hue',0,360),
+    hue2:    p('hue2',-70,70),
+    sat:     p('sat',0.18,0.5)
+  };
+}
+
+/* ---------- 投影 ---------- */
+const proj = (X,Y,Z) => [X, -Z*Math.cos(EL) + Y*Math.sin(EL), Z*Math.sin(EL) + Y*Math.cos(EL)];
+
+/* ---------- 显示列表：全场统一深度排序 ---------- */
+function Scene(){ this.items = []; }
+Scene.prototype.path = function(pts, o){
+  if (pts.length < 2) return;
+  let d = 0; for (const p of pts) d += p[2];
+  this.items.push({ t:'p', pts, d:d/pts.length, ...o });
+};
+Scene.prototype.bead = function(p, r, o){
+  this.items.push({ t:'b', x:p[0], y:p[1], d:p[2], r, ...o });
+};
+Scene.prototype.bounds = function(){
+  let a=[1e9,1e9], b=[-1e9,-1e9];
+  for (const it of this.items){
+    const ps = it.t==='p' ? it.pts : [[it.x,it.y]];
+    for (const p of ps){
+      a[0]=Math.min(a[0],p[0]); a[1]=Math.min(a[1],p[1]);
+      b[0]=Math.max(b[0],p[0]); b[1]=Math.max(b[1],p[1]);
+    }
+  }
+  return {a,b};
+};
+Scene.prototype.render = function(c, W, H){
+  const {a,b} = this.bounds();
+  const w = b[0]-a[0] || 1, h = b[1]-a[1] || 1;
+  const s = Math.min(W*0.84/w, H*0.84/h);          // 自动取景：高瘦与矮胖都装得下
+  const ox = W/2 - (a[0]+b[0])/2*s, oy = H/2 - (a[1]+b[1])/2*s;
+  const X = p => p[0]*s+ox, Y = p => p[1]*s+oy;
+
+  this.items.sort((m,n)=>m.d-n.d);
+  for (const it of this.items){
+    if (it.t === 'p'){
+      c.beginPath();
+      c.moveTo(X(it.pts[0]), Y(it.pts[0]));
+      for (const p of it.pts) c.lineTo(X(p), Y(p));
+      if (it.close) c.closePath();
+      if (it.fill){ c.fillStyle = it.fill; c.fill(); }
+      if (it.stroke){ c.strokeStyle = it.stroke; c.lineWidth = (it.w||1); c.stroke(); }
+    } else {
+      c.beginPath(); c.arc(X(it), Y(it), it.r*Math.max(.55,Math.min(1.4,s/95)), 0, TAU);
+      if (it.fill){ c.fillStyle = it.fill; c.fill(); }
+      if (it.stroke){ c.strokeStyle = it.stroke; c.lineWidth = it.w||.4; c.stroke(); }
+    }
+  }
+};
+
+/* ---------- 颜色 ---------- */
+function mkCol(G){
+  return (t, l, a) => {
+    const L = DARK ? Math.min(93, l*0.5 + 48) : l;
+    const S = DARK ? Math.min(96, G.sat*100*1.9) : G.sat*100;
+    return `hsla(${(G.hue + G.hue2*t + 720)%360} ${S}% ${L}% / ${a})`;
+  };
+}
+
+/* ---------- 基础几何：一枚叶/瓣 ---------- */
+function bladePts(O, phi, tilt, len, wid, droop, G, side, n){
+  const out = [];
+  for (let i=0;i<=n;i++){
+    const t = i/n;
+    let w = wid * Math.pow(Math.sin(Math.PI*Math.pow(t,0.72)), G.tipN);
+    if (G.edge==='scallop') w *= 1 + 0.26*Math.sin(G.scallop*Math.PI*t);
+    if (G.edge==='tooth')   w *= 1 + 0.30*(Math.abs((G.scallop*t)%1 - .5)*2 - .5);
+    if (G.edge==='fringe')  w *= 1 + 0.12*Math.sin(G.scallop*2.3*Math.PI*t);
+    const x0 = 0.05 + t*len, z0 = -droop*len*t*t;
+    const x1 = x0*Math.cos(tilt), z1 = x0*Math.sin(tilt) + z0;
+    const y = side*w;
+    out.push(proj(O[0] + x1*Math.cos(phi) - y*Math.sin(phi),
+                  O[1] + x1*Math.sin(phi) + y*Math.cos(phi),
+                  O[2] + z1));
+  }
+  return out;
+}
+function bladeAxis(O, phi, tilt, len, droop, t){
+  const x0 = 0.05 + t*len, z0 = -droop*len*t*t;
+  const x1 = x0*Math.cos(tilt), z1 = x0*Math.sin(tilt) + z0;
+  return proj(O[0]+x1*Math.cos(phi), O[1]+x1*Math.sin(phi), O[2]+z1);
+}
+
+/* ---------- 器官 ---------- */
+function organBlade(S, G, col, O, phi, tilt, len, wid, droop, lum, alpha){
+  const N = 24;
+  const E1 = bladePts(O,phi,tilt,len,wid,droop,G,1,N);
+  const E2 = bladePts(O,phi,tilt,len,wid,droop,G,-1,N);
+  const outline = E1.concat(E2.slice().reverse());
+
+  S.path(outline, { close:true, stroke:col(1,lum-8,alpha), w:1.4,
+                    fill:col(.5,DARK?30:80, alpha*(DARK?.16:.2)) });
+  if (G.dbl)
+    S.path(bladePts(O,phi,tilt,len*0.9,wid*0.78,droop,G,1,N)
+             .concat(bladePts(O,phi,tilt,len*0.9,wid*0.78,droop,G,-1,N).reverse()),
+           { close:true, stroke:col(1,lum+6,alpha*.45), w:.55 });
+
+  const base = bladeAxis(O,phi,tilt,len,droop,0);
+  // 中脉
+  S.path([base, bladeAxis(O,phi,tilt,len,droop,1)], { stroke:col(.7,lum+2,alpha*.9), w:1 });
+
+  // 内部填充结构
+  if (G.fill === 'fan'){
+    for (let j=1;j<=G.ribs;j++){ const t=j/(G.ribs+1);
+      for (const s of [1,-1]) S.path([base, bladePts(O,phi,tilt,len,wid,droop,G,s,N)[Math.round(t*N)]],
+                                     { stroke:col(.7,lum+4,alpha*.6), w:.55 }); }
+  } else if (G.fill === 'parallel'){
+    for (let j=1;j<=G.ribs;j++){ const t=j/(G.ribs+1); const i=Math.round(t*N);
+      S.path([E1[i], bladeAxis(O,phi,tilt,len,droop,t), E2[i]],
+             { stroke:col(.7,lum+4,alpha*.6), w:.55 }); }
+  } else if (G.fill === 'cross'){
+    for (let j=1;j<=G.ribs;j++){ const t=j/(G.ribs+1); const i=Math.round(t*N);
+      S.path([base,E1[i]], { stroke:col(.7,lum+4,alpha*.45), w:.45 });
+      S.path([base,E2[i]], { stroke:col(.7,lum+4,alpha*.45), w:.45 });
+      S.path([E1[i],E2[i]], { stroke:col(.7,lum+6,alpha*.35), w:.4 }); }
+  }
+
+  // 蕾丝横档
+  for (let m=1;m<=G.arcs;m++){
+    const t = 0.35 + 0.55*m/(G.arcs+0.5), i = Math.round(t*N);
+    const arc=[]; for (let k=0;k<=12;k++)
+      arc.push(bladePts(O,phi,tilt,len,wid,droop,G,-1+2*k/12,N)[i]);
+    S.path(arc, { stroke:col(.8,lum+6,alpha*.5), w:.5 });
+  }
+  // 筋脉间小横撑
+  if (G.struts)
+    for (let j=2;j<G.ribs;j+=2){ const i=Math.round(j/(G.ribs+1)*N);
+      S.path([E1[i], E1[Math.min(N,i+2)]], { stroke:col(.9,lum+8,alpha*.5), w:.45 });
+      S.path([E2[i], E2[Math.min(N,i+2)]], { stroke:col(.9,lum+8,alpha*.5), w:.45 }); }
+
+  return { E1, E2, tip: E1[N] };
+}
+
+function organFilaments(S, G, col, O, n, len, curl, r0){
+  for (let k=0;k<n;k++){
+    const phi = TAU*k/n + 0.37;
+    const L = len*(0.7 + 0.3*hash01(G.seed+'|f'+k));
+    const pts=[];
+    for (let i=0;i<=16;i++){ const t=i/16;
+      pts.push(proj(O[0] + (r0+t*L*0.42)*Math.cos(phi),
+                    O[1] + (r0+t*L*0.42)*Math.sin(phi),
+                    O[2] + t*L*0.95 - curl*L*0.5*t*t*t));
+    }
+    S.path(pts, { stroke:col(.3,50,.6), w:.75 });
+    S.bead(pts[16], 2.5, { fill:col(1,DARK?64:68,.95), stroke:col(1,42,.6), w:.45 });
+  }
+}
+
+function organCollar(S, G, col, O, n, r){
+  for (let k=0;k<n;k++){
+    const a = TAU*k/n;
+    S.bead(proj(O[0]+r*Math.cos(a), O[1]+r*Math.sin(a), O[2]), 2.1,
+           { fill:col(.2,DARK?58:74,.92), stroke:col(.2,40,.55), w:.4 });
+  }
+}
+
+function organDisc(S, G, col, O, n, r){
+  for (let k=0;k<n;k++){
+    const a = TAU*k/n, rr = k%2 ? r : r*0.52;
+    S.bead(proj(O[0]+rr*Math.cos(a), O[1]+rr*Math.sin(a), O[2]+0.01), k%2?2.6:2.0,
+           { fill:col(.1,DARK?70:88,.95), stroke:col(.1,46,.5), w:.4 });
+  }
+  S.bead(proj(O[0],O[1],O[2]+0.02), 3.2, { fill:col(.1,DARK?76:92,.95), stroke:col(.1,46,.5), w:.4 });
+}
+
+function organTerminal(S, G, col, O, kind, scale){
+  if (kind==='none') return;
+  if (kind==='bead') S.bead(proj(O[0],O[1],O[2]), 4, { fill:col(1,DARK?72:84,.95), stroke:col(1,42,.6), w:.5 });
+  else if (kind==='cluster') organDisc(S,G,col,O,7,0.055*scale);
+  else if (kind==='star'){
+    const n = 7, pts=[];
+    for (let k=0;k<=n*2;k++){ const a=Math.PI*k/n, r=(k%2?0.035:0.085)*scale;
+      pts.push(proj(O[0]+r*Math.cos(a), O[1]+r*Math.sin(a)*0.4, O[2]+r*Math.sin(a)*0.9)); }
+    S.path(pts,{close:true, stroke:col(1,52,.85), w:1, fill:col(1,DARK?36:86,.35)});
+  } else if (kind==='curl'){
+    const pts=[]; for(let i=0;i<=18;i++){ const t=i/18, a=t*TAU*1.1, r=0.09*scale*t;
+      pts.push(proj(O[0]+r*Math.cos(a), O[1]+r*Math.sin(a), O[2]+t*0.1*scale)); }
+    S.path(pts,{stroke:col(1,50,.8), w:.9});
+    S.bead(pts[18], 2.4, { fill:col(1,DARK?70:82,.95), stroke:col(1,42,.6), w:.45 });
+  }
+}
+
+/* 缠线轴：两根并行 + 横向缠绕；可给起止点 */
+function organAxis(S, G, col, A, B, wraps){
+  const d = [B[0]-A[0], B[1]-A[1], B[2]-A[2]];
+  const at = t => [A[0]+d[0]*t + G.axisBend*0.12*t*t, A[1]+d[1]*t, A[2]+d[2]*t];
+  const off = 0.016;
+  for (const s of [-1,1]){
+    const pts=[]; for(let i=0;i<=16;i++){ const q=at(i/16); pts.push(proj(q[0]+s*off,q[1],q[2])); }
+    S.path(pts, { stroke:col(0,40,.62), w:1.2 });
+  }
+  for (let i=1;i<wraps;i++){ const q=at(i/wraps);
+    S.path([proj(q[0]-off*1.3,q[1],q[2]), proj(q[0]+off*1.3,q[1],q[2])],
+           { stroke:col(0,46,.42), w:.65 }); }
+  return at;
+}
+
+/* 排列方式 → 某一节上长几个器官、朝哪。同一体制的差异主要来自这里 */
+function arrange(G, r, nBase){
+  const GA = 2.399963;                           // 黄金角
+  if (G.phyllo === 'spiral')    return { n:1,     phi0: r*GA };
+  if (G.phyllo === 'alternate') return { n:2,     phi0: r*Math.PI/2 };
+  if (G.phyllo === 'opposite')  return { n:2,     phi0: r*0.37 };
+  return                               { n:nBase, phi0: r*GA*0.5 };   // whorl
+}
+
+/* ---------- 五种体制 ---------- */
+function build(G){
+  const S = new Scene(), col = mkCol(G);
+  const lum = DARK ? 50 : 44;
+  const tilt = (1-G.open)*Math.PI*0.44;
+  const P = G.plan;
+
+  if (P === 'radial'){
+    // 极短轴、平展放射臂、末端卷曲（参考图 5）
+    const O=[0,0,0];
+    organAxis(S,G,col,[0,0,-0.9],[0,0,0],7);
+    const n = Math.max(8, G.petals + 4);          // 放射必须够多臂，4 条不成放射
+    for (let k=0;k<n;k++){
+      const phi = TAU*k/n;
+      const L = G.len*1.25*(0.82 + 0.18*hash01(G.seed+'|arm'+k));   // 臂长不齐才像生物
+      organBlade(S,G,col,O,phi, Math.PI*0.05, L, G.wid*0.42, -0.42, lum, .85);
+      organTerminal(S,G,col, bladeAxis(O,phi,Math.PI*0.05,L,-0.42,1.02),
+                    G.terminal==='none'?'curl':G.terminal, 0.55);
+    }
+    organFilaments(S,G,col,O, Math.max(6,G.stamens), G.stamLen*0.4, 0.2, 0.04);
+    organDisc(S,G,col,O, 11, 0.075);
+
+  } else if (P === 'tiered'){
+    // 中轴串起多层悬垂叶，顶端一个小终端（参考图 4）
+    const top = 0.35 + G.axisLen*0.9;
+    const at = organAxis(S,G,col,[0,0,-0.95],[0,0,top], 22);
+    for (let r=0;r<G.tiers;r++){
+      const t = 0.28 + 0.62*r/Math.max(1,G.tiers-1);
+      const O = at(t);
+      const sc = 1 - G.taper*0.55*(r/Math.max(1,G.tiers));
+      // 层叠的性格就是轮生，不参与 phyllo 变化（螺旋会让每层只剩一片叶）。
+      // phyllo 在这里只决定层与层之间错开多少。
+      const n = Math.max(4, G.petals - r);
+      const off = { whorl:2.399, spiral:1.047, alternate:Math.PI/2, opposite:0.31 }[G.phyllo];
+      for (let k=0;k<n;k++)
+        organBlade(S,G,col,O, TAU*k/n + r*off, Math.PI*G.tilt0*0.6,
+                   G.len*1.15*sc, G.wid*0.62*sc, 0.55+0.3*r, lum, .8);
+      organCollar(S,G,col,O, Math.max(5,(G.collar||6)-r), 0.055*Math.abs(sc));
+    }
+    organTerminal(S,G,col, at(1), G.terminal==='none'?'star':G.terminal, 1.3);
+
+  } else if (P === 'fork'){
+    // 轴分叉，每叉顶端一片镂空（参考图 2）
+    const at = organAxis(S,G,col,[0,0,-1.0],[0,0,-0.05], 16);
+    const arms = G.arms;
+    for (let a=0;a<arms;a++){
+      const phi = TAU*a/arms + 0.2;
+      const R = G.armSpread;
+      const B = [Math.cos(phi)*R, Math.sin(phi)*R, 0.62+G.axisLen*0.3];
+      organAxis(S,G,col,[0,0,-0.05],B, 11);
+      // 叉顶一圈上扬的臂：绕满整圈，中等倾角，否则会叠成一根竖条
+      const n = Math.max(5, G.petals);
+      for (let k=0;k<n;k++)
+        organBlade(S,G,col,B, TAU*k/n + phi, Math.PI*0.17,
+                   G.len*0.7, G.wid*0.72, -0.45, lum, .82);
+      organCollar(S,G,col,B, Math.max(6,G.collar), 0.07);
+      organFilaments(S,G,col,B, Math.max(4,Math.round(G.stamens*0.4)), G.stamLen*0.5, 0.15, 0.03);
+      organTerminal(S,G,col,[B[0],B[1],B[2]+0.12], G.terminal, .7);
+    }
+    organDisc(S,G,col,[0,0,-0.02], 7, 0.05);
+
+  } else if (P === 'spike'){
+    // 细长轴，沿轴密布小花与珠（参考图 3 / 图 2 背景那株）
+    const top = 0.5 + G.axisLen;
+    const at = organAxis(S,G,col,[0,0,-0.95],[0,0,top], 26);
+    const rows = 4 + G.tiers*2;
+    for (let r=0;r<rows;r++){
+      const t = 0.15 + 0.8*r/rows, O = at(t);
+      const sc = (0.34 - G.taper*0.17*(r/rows)) * (0.84 + 0.32*hash01(G.seed+'|row'+r));
+      const A = arrange(G, r, Math.max(3, Math.round(G.petals*0.6)));
+      for (let k=0;k<A.n;k++)
+        organBlade(S,G,col,O, TAU*k/A.n + A.phi0, Math.PI*G.tilt0,
+                   G.len*Math.abs(sc), G.wid*Math.abs(sc)*0.9, G.droop*0.3, lum, .78);
+      if (A.n > 2) organCollar(S,G,col,O, 6, 0.028);
+    }
+    organFilaments(S,G,col, at(1), Math.max(5,Math.round(G.stamens*0.5)), G.stamLen*0.45, 0.4, 0.02);
+    organTerminal(S,G,col, at(1.02), G.terminal, .8);
+
+  } else {
+    // bowl：缠线柱 + 一轮蕾丝瓣 + 弧射花丝 + 珍珠团（参考图 1）
+    const O=[0,0,0];
+    organAxis(S,G,col,[0,0,-1.05],[0,0,-0.02], 18);
+    organCollar(S,G,col,[0,0,-0.06], Math.max(6,G.collar), 0.075);
+    const nb = Math.max(5, G.petals);
+    // 外轮
+    for (let k=0;k<nb;k++)
+      organBlade(S,G,col,O, TAU*k/nb, tilt, G.len, G.wid, G.droop, lum, .86);
+    // 内轮：错开半个相位、更小更直立。单轮太稀，参考图 1 的莲也是双层
+    const ni = Math.max(4, nb-2);
+    for (let k=0;k<ni;k++)
+      organBlade(S,G,col,[0,0,0.03], TAU*k/ni + Math.PI/ni, tilt*0.62,
+                 G.len*0.62, G.wid*0.78, G.droop*0.5, lum+6, .8);
+    organFilaments(S,G,col,O, Math.max(5,G.stamens), G.stamLen, G.stamCurl, 0.05);
+    organDisc(S,G,col,O, 11, 0.06);
+    organTerminal(S,G,col,[0,0,G.stamLen*0.5], G.terminal==='bead'?'none':G.terminal, .7);
+  }
+  return S;
+}
+
+/* ---------- 渲染 ---------- */
+function draw(cv, G){
+  const W=250, H=300, DPR=2;
+  cv.width=W*DPR; cv.height=H*DPR;
+  const c=cv.getContext('2d'); c.scale(DPR,DPR);
+  c.fillStyle = DARK ? '#14171B' : '#F6F3EA'; c.fillRect(0,0,W,H);
+  c.lineCap='round'; c.lineJoin='round';
+  build(G).render(c, W, H);
+}
+
+const SEEDS=[3,19,27,44,61,88,102,119,137,151,166,180,203,219,240,266,281,295,310,329];
+const host=document.getElementById('g');
+for(const s of SEEDS){
+  const G=genome(s);
+  const d=document.createElement('div'); d.className='cell';
+  const cv=document.createElement('canvas'); d.appendChild(cv);
+  const i=document.createElement('div'); i.className='gene';
+  i.innerHTML = `<span class="plan">${G.plan}</span><b>#${s}</b> ${G.edge}/${G.fill}<br>`+
+    `瓣<b>${G.petals}</b> 脉<b>${G.ribs}</b> 丝<b>${G.stamens}</b> 托<b>${G.collar}</b> ${G.terminal}`;
+  d.appendChild(i); host.appendChild(d);
+  draw(cv,G);
+}
+</script>
