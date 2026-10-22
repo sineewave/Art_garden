@@ -1,0 +1,230 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Lace Genome Probe</title>
+<style>
+  body{margin:0;background:#EDEAE3;color:#4A4338;
+       font:11px ui-monospace,Menlo,monospace;padding:16px}
+  h1{font:600 12px/1.5 ui-monospace,monospace;letter-spacing:.2em;
+     color:#8A8578;margin:0 0 14px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .cell{background:#F6F3EA;border:1px solid #DCD6C8;padding:8px}
+  canvas{display:block;width:100%;height:auto}
+  .gene{margin-top:6px;color:#8A8578;line-height:1.55;font-size:9.5px}
+  .gene b{color:#6E8A5A;font-weight:400}
+</style>
+<h1>线构成的花 · 蕾丝 / 串珠 / 镂空 · 同一套代码只改基因</h1>
+<div class="grid" id="g"></div>
+<script>
+const TAU = Math.PI*2, EL = 0.38;
+const DARK = new URLSearchParams(location.search).has('dark');
+if(DARK){document.documentElement.style.background='#0E1013';}          // 相机仰角：偏侧视，看得见侧影与花丝
+
+/* 不要用「每朵花一条随机序列」——LCG 跨种子的同位输出有残余相关，
+   表现为某个基因在所有花上同时塌缩（先是瓣数全为 5，修完又轮到色相全是绿）。
+   改成每个基因独立哈希 (种子 + 基因名)：各基因之间由构造保证互不相关。
+   genome.js 用的是同一套 FNV-1a。 */
+function hash01(str){
+  let h = 2166136261 >>> 0;
+  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,16777619)>>>0; }
+  return h / 4294967296;
+}
+
+function genome(seed){
+  const p = (name,a,b)=> a + hash01(seed + '|' + name) * (b-a);
+  return {
+    petals:  Math.round(p('petals',4,9)),     // 花瓣数        ← 聚类簇
+    ribs:    Math.round(p('ribs',5,13)),    // 每瓣筋脉数    ← 图像复杂度（可数！）
+    beads:   Math.round(p('beads',0,2)),     // 边缘珠        ← 0无 1疏 2密
+    open:    p('open',0.25,0.95),           // 开合          ← 被注视时长
+    droop:   p('droop',-0.15,0.55),          // 下垂          ← 构图重心
+    len:     p('len',0.72,1.12),           // 瓣长          ← 长宽比
+    wid:     p('wid',0.16,0.40),           // 瓣宽          ← 长宽比反向
+    scallop: Math.round(p('scallop',0,7)),     // 扇贝边数      ← 边缘高频
+    tipN:    p('tipN',0.7,1.9),             // 尖端锐度      ← 同上
+    stamens: Math.round(p('stamens',6,26)),    // 花丝数        ← 点赞数（可数！）
+    stamLen: p('stamLen',0.80,1.75),           // 花丝长度      ← 评论数
+    stamCurl:p('stamCurl',0.15,1.1),            // 花丝卷曲
+    hue:     p('hue',0,360),               // 色相          ← HSV 主峰
+    hue2:    p('hue2',-60,60),              // 梢端色偏      ← HSV 熵
+    sat:     p('sat',0.16,0.46),           // 饱和（压低，参考图都是浅色）
+    arcs:    Math.round(p('arcs',1,3))      // 蕾丝横档数
+  };
+}
+
+/* 三维骨架 → 屏幕。花瓣在三维里算，2D/3D/STL 共用这一层 */
+function proj(X,Y,Z){
+  return [X, -Z*Math.cos(EL) + Y*Math.sin(EL), Z*Math.sin(EL) + Y*Math.cos(EL)];
+}
+function petalFrame(G, t, lat, phi, tilt){
+  const w = G.wid * Math.pow(Math.sin(Math.PI*Math.pow(t,0.72)), G.tipN)
+          * (1 + 0.24*Math.sin(G.scallop*Math.PI*t));
+  const x0 = 0.1 + t*G.len;
+  const z0 = -G.droop*G.len*t*t;
+  const x1 = x0*Math.cos(tilt), z1 = x0*Math.sin(tilt) + z0;
+  const y  = lat*w;
+  return proj(x1*Math.cos(phi) - y*Math.sin(phi),
+              x1*Math.sin(phi) + y*Math.cos(phi), z1);
+}
+
+function draw(cv, G){
+  const W=300, H=340, DPR=2;
+  cv.width=W*DPR; cv.height=H*DPR;
+  const c = cv.getContext('2d');
+  c.scale(DPR,DPR);
+  c.fillStyle=DARK?'#15181C':'#F6F3EA'; c.fillRect(0,0,W,H);
+  c.translate(W/2, H*0.62);
+  const U = 108;
+  c.lineCap='round'; c.lineJoin='round';
+
+  const tilt = (1-G.open)*Math.PI*0.42;
+  const col = (t, l, a) => { const L = DARK ? Math.min(92, l*0.55 + 46) : l;
+    const S = DARK ? Math.min(96, G.sat*100*1.9) : G.sat*100;
+    return `hsla(${(G.hue+G.hue2*t+360)%360} ${S}% ${L}% / ${a})`; };
+
+  /* ---- 收集花瓣，按深度排序 ---- */
+  const P = [];
+  for (let k=0;k<G.petals;k++){
+    const phi = TAU*k/G.petals;
+    let d=0, n=0;
+    for (let i=0;i<=6;i++){ d += petalFrame(G,i/6,0,phi,tilt)[2]; n++; }
+    P.push({phi, d:d/n});
+  }
+  P.sort((a,b)=>a.d-b.d);
+
+  /* ---- 茎：缠线感，两根并行 + 横向缠绕 ---- */
+  const SH = 92;
+  c.strokeStyle = col(0,40,.6); c.lineWidth=1.3;
+  for (const off of [-1.6, 1.6]){
+    c.beginPath();
+    for (let i=0;i<=20;i++){ const t=i/20;
+      c.lineTo(off + G.droop*6*t, t*SH); }
+    c.stroke();
+  }
+  c.lineWidth=.7; c.strokeStyle = col(0,46,.42);
+  for (let i=1;i<16;i++){ const t=i/16;
+    c.beginPath();
+    c.moveTo(-2.1+G.droop*6*t, t*SH); c.lineTo(2.1+G.droop*6*t, t*SH); c.stroke(); }
+
+  drawStamens(false);        // 花心后方的花丝先画（函数声明提升）
+
+  /* ---- 花瓣：轮廓 + 从基部放射的筋脉 + 蕾丝横档 + 边缘珠 ---- */
+  for (const {phi,d} of P){
+    const near = (d + 1.2)/2.4;                      // 近处更实
+    const a = 0.42 + 0.5*Math.max(0,Math.min(1,near));
+    const lum = 44 + 16*(1-near);
+
+    const edge = s => { const o=[]; for(let i=0;i<=26;i++){ const t=i/26;
+        const p=petalFrame(G,t,s,phi,tilt); o.push([p[0]*U,p[1]*U]); } return o; };
+    const E1=edge(1), E2=edge(-1);
+    const base = petalFrame(G,0,0,phi,tilt);
+
+    // 轮廓
+    c.strokeStyle = col(1,lum-8,a); c.lineWidth = 1.5;
+    c.beginPath();
+    c.moveTo(E1[0][0],E1[0][1]);
+    for(const p of E1) c.lineTo(p[0],p[1]);
+    for(let i=E2.length-1;i>=0;i--) c.lineTo(E2[i][0],E2[i][1]);
+    c.closePath();
+    c.fillStyle = col(.5,78,a*0.22); c.fill();
+    c.stroke();
+
+    // 筋脉：从瓣基呈扇形射向边缘（参考图 1 的蕾丝结构）
+    c.lineWidth = 0.65; c.strokeStyle = col(.7,lum+4,a*0.78);
+    for (let j=1;j<=G.ribs;j++){
+      const t = j/(G.ribs+1);
+      for (const s of [1,-1]){
+        const p = petalFrame(G,t,s,phi,tilt);
+        c.beginPath();
+        c.moveTo(base[0]*U, base[1]*U);
+        c.lineTo(p[0]*U, p[1]*U);
+        c.stroke();
+      }
+    }
+    // 中脉
+    c.lineWidth=1.0;
+    const mid = petalFrame(G,1,0,phi,tilt);
+    c.beginPath(); c.moveTo(base[0]*U,base[1]*U); c.lineTo(mid[0]*U,mid[1]*U); c.stroke();
+
+    // 蕾丝横档：横跨筋脉的弧
+    c.lineWidth=0.55; c.strokeStyle = col(.8,lum+6,a*0.6);
+    for (let m=1;m<=G.arcs;m++){
+      const t = 0.42 + 0.46*m/(G.arcs+0.4);
+      c.beginPath();
+      for (let i=0;i<=16;i++){
+        const s = -1 + 2*i/16;
+        const p = petalFrame(G,t,s,phi,tilt);
+        c.lineTo(p[0]*U,p[1]*U);
+      }
+      c.stroke();
+    }
+
+    // 边缘珠
+    if (G.beads>0){
+      const step = G.beads===1 ? 4 : 2;
+      c.fillStyle = col(1,92,a);
+      c.strokeStyle = col(1,54,a*0.7); c.lineWidth=0.4;
+      for (const E of [E1,E2])
+        for (let i=2;i<E.length;i+=step){
+          c.beginPath(); c.arc(E[i][0],E[i][1], 2.3, 0, TAU);
+          c.fill(); c.stroke();
+        }
+    }
+  }
+
+  /* ---- 花丝：从花心弧射而出，末端一粒珠（参考图 1/3/5 的主要性格）---- */
+  function stamen(k){
+    const phi = TAU*k/G.stamens + 0.3;
+    const L = G.stamLen*(0.72 + 0.28*((k*7919)%17)/17);
+    const pts=[];
+    for (let i=0;i<=16;i++){
+      const t=i/16;
+      const r = 0.05 + t*L*0.40;
+      const z = t*L*0.92 - G.stamCurl*L*0.5*t*t*t;
+      const p = proj(r*Math.cos(phi), r*Math.sin(phi), z);
+      pts.push([p[0]*U, p[1]*U, p[2]]);
+    }
+    return pts;
+  }
+  function drawStamens(front){
+    for (let k=0;k<G.stamens;k++){
+      const pts = stamen(k);
+      const d = pts[(pts.length/2)|0][2];
+      if ((d >= 0) !== front) continue;
+      const a = front ? 0.62 : 0.3;
+      c.strokeStyle = col(.3, front?46:58, a); c.lineWidth = front?0.85:0.6;
+      c.beginPath(); for(const p of pts) c.lineTo(p[0],p[1]); c.stroke();
+      const tip = pts[pts.length-1];
+      c.fillStyle = col(1, front?66:78, front?.95:.55);
+      c.strokeStyle = col(1, 44, a*0.8); c.lineWidth=0.45;
+      c.beginPath(); c.arc(tip[0],tip[1], front?2.7:2.0, 0, TAU);
+      c.fill(); c.stroke();
+    }
+  }
+
+  drawStamens(true);         // 花心前方的花丝压在花瓣之上
+
+  /* ---- 花心：小球簇（参考图 1 的珍珠团）---- */
+  for (let i=0;i<13;i++){
+    const a = TAU*i/13, r = i===0?0:5.5;
+    c.fillStyle = `hsla(${(G.hue+40)%360} ${G.sat*60}% ${86-(i%3)*7}% / .95)`;
+    c.strokeStyle = col(0,56,.5); c.lineWidth=0.4;
+    c.beginPath();
+    c.arc(Math.cos(a)*r, Math.sin(a)*r*Math.sin(EL) - 3, i===0?4:3, 0, TAU);
+    c.fill(); c.stroke();
+  }
+}
+
+const SEEDS=[3,19,27,44,61,88,102,119];
+const host=document.getElementById('g');
+for(const s of SEEDS){
+  const G=genome(s);
+  const d=document.createElement('div'); d.className='cell';
+  const cv=document.createElement('canvas'); d.appendChild(cv);
+  const i=document.createElement('div'); i.className='gene';
+  i.innerHTML = `<b>#${s}</b> 瓣<b>${G.petals}</b> 筋脉<b>${G.ribs}</b> `+
+    `花丝<b>${G.stamens}</b> 扇贝<b>${G.scallop}</b><br>`+
+    `开<b>${G.open.toFixed(2)}</b> 垂<b>${G.droop.toFixed(2)}</b> 色相<b>${G.hue|0}°</b>`;
+  d.appendChild(i); host.appendChild(d);
+  draw(cv,G);
+}
+</script>
