@@ -1,0 +1,187 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Genome Probe</title>
+<style>
+  body{margin:0;background:#0E1013;color:#C9C6BC;
+       font:11px ui-monospace,Menlo,monospace;padding:14px}
+  h1{font:600 13px/1.5 ui-monospace,monospace;letter-spacing:.18em;
+     color:#8A8578;margin:0 0 12px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cell{background:#15181C;border:1px solid #23272C;padding:6px}
+  canvas{display:block;width:100%;height:auto;image-rendering:pixelated}
+  .gene{margin-top:5px;color:#6E6A60;line-height:1.5;font-size:9.5px;
+        word-break:break-all}
+  .gene b{color:#9DB98A;font-weight:400}
+</style>
+<h1>可行性探针 · 同一套代码 · 只改基因向量 · 纯 2D canvas</h1>
+<div class="grid" id="g"></div>
+<script>
+const TAU = Math.PI * 2;
+
+/* ---- 确定性随机：同一个 seed 永远长出同一朵花 ---- */
+function rng(seed){
+  let s = seed >>> 0;
+  return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+}
+
+/* ---- 基因组：16 个参数。真实版本里每一项都由图像特征/互动数据决定 ---- */
+function genome(seed){
+  const r = rng(seed);
+  const pick = (a, b) => a + r() * (b - a);
+  return {
+    sym:    Math.round(pick(3, 13)),      // 每轮花瓣数   ← 聚类簇 + 主色相
+    whorls: Math.round(pick(1, 4)),       // 层数         ← log(点赞+评论)
+    open:   pick(0.30, 1.0),              // 开合角度     ← 点赞百分位（被看见=张开）
+    len:    pick(0.55, 1.15),             // 花瓣长度     ← 图像长宽比
+    wid:    pick(0.08, 0.40),             // 花瓣宽度     ← 图像长宽比
+    curl:   pick(-0.5, 0.75),             // 弯曲         ← 构图重心偏移
+    serr:   Math.round(pick(0, 9)),       // 边缘锯齿数   ← 灰度高频能量（复杂度）
+    tipN:   pick(0.5, 3.2),               // 尖端锐度     ← 同上
+    hue:    pick(0, 360),                 // 主色相       ← HSV 直方图主峰
+    sat:    pick(0.18, 0.95),             // 饱和度       ← HSV 直方图
+    val:    pick(0.45, 1.0),              // 明度         ← HSV 直方图
+    spread: pick(0, 70),                  // 瓣间色相差   ← HSV 熵（杂色程度）
+    twist:  pick(0, 1),                   // 层间旋转     ← 黄金角 × 代数
+    disc:   pick(0.05, 0.3),              // 花心大小     ← 中心/边缘对比
+    weave:  Math.round(pick(0, 7)),       // 编织密度     ← 近重复相似度
+    pix:    Math.round(pick(0, 5))        // 像素化程度   ← 素材被转载次数
+  };
+}
+
+const CAM = 1.02;  // 俯视角，固定
+
+/* 花瓣轮廓：局部坐标 (沿瓣长 u, 横向 ±w) → 旋转抬起 → 绕轴阵列 → 投影 */
+function petalPts(G, u0, u1, steps, phi, tilt, R, S){
+  const out = [];
+  const push = (u, side) => {
+    const w = G.wid * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.75)), G.tipN)
+            * (1 + 0.14 * Math.sin(G.serr * Math.PI * u));
+    const x0 = R + u * G.len * S;
+    const y0 = side * w * S;
+    const z0 = G.curl * G.len * S * u * u;
+    const x1 = x0 * Math.cos(tilt);
+    const z1 = x0 * Math.sin(tilt) + z0;
+    const X = x1 * Math.cos(phi) - y0 * Math.sin(phi);
+    const Y = x1 * Math.sin(phi) + y0 * Math.cos(phi);
+    out.push([X, Y * Math.cos(CAM) - z1 * Math.sin(CAM),
+              Y * Math.sin(CAM) + z1 * Math.cos(CAM)]);
+  };
+  for (let i = 0; i <= steps; i++) push(u0 + (u1 - u0) * i / steps, 1);
+  for (let i = steps; i >= 0; i--) push(u0 + (u1 - u0) * i / steps, -1);
+  return out;
+}
+
+function draw(cv, G){
+  const DPR = 2, W = 230, H = 230;
+  cv.width = W * DPR; cv.height = H * DPR;
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+
+  // 像素化：先画到低分辨率再放大。区间要温和，否则花会糊成色块
+  const px = G.pix > 0 ? [0, 170, 142, 118, 96, 78][G.pix] : 0;
+  let tc = ctx, buf = null;
+  if (px) {
+    buf = document.createElement('canvas');
+    buf.width = buf.height = px;
+    tc = buf.getContext('2d');
+    tc.scale(px / W, px / H);
+  }
+
+  tc.fillStyle = '#15181C';
+  tc.fillRect(0, 0, W, H);
+  tc.save();
+  tc.translate(W / 2, H / 2 - 4);
+  const U = 88;   // 单位尺度
+
+  // 收集所有花瓣，按深度排序（画家算法）—— 这是 2D 里做出三维遮挡的关键
+  const petals = [];
+  for (let w = 0; w < G.whorls; w++) {
+    const t = G.whorls > 1 ? w / (G.whorls - 1) : 0;
+    const open = G.open * (0.62 + 0.38 * t);          // 外层更张开
+    const tilt = (1 - open) * Math.PI * 0.36;
+    const S = 1 - 0.3 * (1 - t);                       // 内层更小
+    const R = G.disc * (0.6 + 0.4 * t);
+    const n = Math.max(3, G.sym - w);
+    for (let k = 0; k < n; k++) {
+      const phi = TAU * k / n + G.twist * w * 2.399;   // 2.399 ≈ 黄金角
+      const pts = petalPts(G, 0.04, 1, 14, phi, tilt, R, S);
+      let d = 0; for (const p of pts) d += p[2];
+      petals.push({ pts, d: d / pts.length, w, k, n, S });
+    }
+  }
+  petals.sort((a, b) => a.d - b.d);
+
+  // 茎
+  tc.strokeStyle = `hsl(${(G.hue + 150) % 360} 24% 32%)`;
+  tc.lineWidth = 2.2 + G.whorls * 0.8;
+  tc.beginPath(); tc.moveTo(0, 4); tc.lineTo(G.curl * 12, 104); tc.stroke();
+
+  const dMin = petals[0].d, dMax = petals[petals.length - 1].d || 1;
+  for (const P of petals) {
+    const nd = (P.d - dMin) / Math.max(1e-6, dMax - dMin);   // 0=最远 1=最近
+    const hue = (G.hue + (P.k / P.n - 0.5) * G.spread + P.w * 9 + 360) % 360;
+    const li  = (26 + G.val * 42) * (0.62 + 0.38 * nd);
+    const sa  = G.sat * 100 * (0.7 + 0.3 * nd);
+
+    tc.beginPath();
+    tc.moveTo(P.pts[0][0] * U, P.pts[0][1] * U);
+    for (const p of P.pts) tc.lineTo(p[0] * U, p[1] * U);
+    tc.closePath();
+
+    if (G.weave > 0) {
+      // 编织／代码质感：不填实，用横向经纬线
+      tc.save(); tc.clip();
+      tc.strokeStyle = `hsl(${hue} ${sa}% ${li}%)`;
+      tc.lineWidth = 0.55;
+      const bb = P.pts.reduce((a, p) => [Math.min(a[0], p[0]), Math.min(a[1], p[1]),
+                                         Math.max(a[2], p[0]), Math.max(a[3], p[1])],
+                              [9, 9, -9, -9]);
+      const n = G.weave * 3;
+      for (let i = 0; i <= n; i++) {
+        const y = (bb[1] + (bb[3] - bb[1]) * i / n) * U;
+        tc.beginPath(); tc.moveTo(bb[0] * U, y); tc.lineTo(bb[2] * U, y); tc.stroke();
+        const x = (bb[0] + (bb[2] - bb[0]) * i / n) * U;
+        tc.beginPath(); tc.moveTo(x, bb[1] * U); tc.lineTo(x, bb[3] * U); tc.stroke();
+      }
+      tc.restore();
+      tc.strokeStyle = `hsl(${hue} ${sa}% ${li + 12}%)`;
+      tc.lineWidth = 0.7; tc.stroke();
+    } else {
+      tc.fillStyle = `hsl(${hue} ${sa}% ${li}%)`;
+      tc.fill();
+      tc.strokeStyle = `hsl(${hue} ${sa}% ${Math.min(96, li + 16)}%)`;
+      tc.lineWidth = 0.5; tc.stroke();
+    }
+  }
+
+  // 花心
+  tc.fillStyle = `hsl(${(G.hue + 40) % 360} ${G.sat * 70}% ${22 + G.val * 30}%)`;
+  tc.beginPath();
+  tc.ellipse(0, 0, G.disc * U * 1.1, G.disc * U * 1.1 * Math.cos(CAM) + 1.5, 0, 0, TAU);
+  tc.fill();
+  tc.restore();
+
+  if (px) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(buf, 0, 0, W, H);
+  }
+}
+
+const SEEDS = [7, 23, 41, 58, 77, 91, 104, 133, 158, 172, 199, 211,
+               240, 263, 288, 301, 329, 347];
+const host = document.getElementById('g');
+for (const s of SEEDS) {
+  const G = genome(s);
+  const d = document.createElement('div'); d.className = 'cell';
+  const cv = document.createElement('canvas');
+  d.appendChild(cv);
+  const info = document.createElement('div'); info.className = 'gene';
+  info.innerHTML =
+    `<b>#${s}</b> 瓣<b>${G.sym}</b> 层<b>${G.whorls}</b> ` +
+    `开<b>${G.open.toFixed(2)}</b> 锯<b>${G.serr}</b><br>` +
+    `编织<b>${G.weave}</b> 像素<b>${G.pix}</b> 色相<b>${G.hue | 0}°</b>`;
+  d.appendChild(info);
+  host.appendChild(d);
+  draw(cv, G);
+}
+</script>

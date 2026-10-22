@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>3D Preview</title>
+<style>
+  body{margin:0;background:#0E1013;color:#8A8578;
+       font:11px ui-monospace,Menlo,monospace}
+  h1{font-size:12px;letter-spacing:.18em;margin:12px 14px;text-transform:uppercase}
+  .row{display:flex;gap:10px;padding:0 14px}
+  .cell{flex:1}
+  .cap{padding:6px 2px;color:#6E6A60}
+  .cap b{color:#9DB98A;font-weight:400}
+  canvas{display:block;border:1px solid #23272C;background:#15181C}
+</style>
+<h1>同一基因组 · 三维实体 · three.js 渲染（由 STL 读回）</h1>
+<div class="row" id="row"></div>
+<script type="module">
+import * as THREE from './node_modules/three/build/three.module.js';
+
+const data = await (await fetch('./mesh.json')).json();
+const META = {
+  41:  ['#41',  '瓣6 层4 开0.92', 0x6FD3B8],
+  263: ['#263', '瓣6 层1 开0.93', 0x9DD36F],
+  301: ['#301', '瓣7 层3 开0.94', 0x8A9BE0]
+};
+const row = document.getElementById('row');
+
+for (const key of ['41','263','301']) {
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const W = 380, H = 420;
+  const ren = new THREE.WebGLRenderer({ antialias:true });
+  ren.setSize(W, H); ren.setPixelRatio(2);
+  cell.appendChild(ren.domElement);
+  const cap = document.createElement('div'); cap.className='cap';
+  cap.innerHTML = `<b>${META[key][0]}</b> ${META[key][1]} · ${data[key].length/9} 三角面`;
+  cell.appendChild(cap); row.appendChild(cell);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x15181C);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(data[key], 3));
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: META[key][2], roughness:0.42, metalness:0.12,
+    flatShading:false, side:THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI/2.35;
+  mesh.rotation.z = 0.5;
+  scene.add(mesh);
+
+  scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x202018, 0.85));
+  const k = new THREE.DirectionalLight(0xffffff, 1.5); k.position.set(2,3,2); scene.add(k);
+  const f = new THREE.DirectionalLight(0x88aaff, 0.5); f.position.set(-2,-1,1); scene.add(f);
+
+  const r = geo.boundingSphere.radius;
+  const cam = new THREE.PerspectiveCamera(32, W/H, 0.01, 100);
+  cam.position.set(r*1.5, -r*2.2, r*1.5);
+  cam.up.set(0,0,1);
+  cam.lookAt(0,0,-r*0.25);
+  ren.render(scene, cam);
+}
+document.title = 'ready';
+</script>

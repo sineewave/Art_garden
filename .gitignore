@@ -9,3 +9,8 @@ assets/audio/
 # 上传别人的作品到公开仓库，和在展厅里放几秒，是两件性质不同的事。
 assets/incoming/*
 !assets/incoming/README.txt
+
+# v2 探针产物
+v2/probe/node_modules/
+v2/probe/mesh.json
+v2/probe/flower_*.stl
