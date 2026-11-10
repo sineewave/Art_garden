@@ -240,7 +240,7 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
 <main>
   <!-- Ⅰ information bloom -->
   <section class="page" id="pageBloom">
-    <canvas class="stage" id="cBloom" aria-label="信息爆炸画布"></canvas>
+    <canvas class="stage" id="cBloom" aria-label="信息爆炸画布 INFORMATION BLOOM"></canvas>
     <div class="card" id="cardB">
       <button class="cardX" data-card="cardB" aria-label="关闭 CLOSE">✕</button>
       <h4 id="cbTitle">OB-0000</h4>
@@ -250,7 +250,7 @@ body.darkTh .tRow input[type=range]::-moz-range-thumb{background:var(--ink)}
 
   <!-- Ⅱ synthetic garden -->
   <section class="page hidden" id="pageGarden">
-    <canvas class="stage" id="cGarden" aria-label="注意力花园画布"></canvas>
+    <canvas class="stage" id="cGarden" aria-label="注意力花园画布 ATTENTION GARDEN"></canvas>
     <div class="toolbar">
       <button class="btn navBtn" id="btnSurface" title="地表 SURFACE">↑</button>
       <button class="btn navBtn" id="btnRoots" title="地下代谢 METABOLISM">↓</button>
@@ -3558,7 +3558,11 @@ $('popReseed').onclick=()=>{ reseedGarden(); closeSet();
   toast(tt('花园已重播 —— 新的一园','the garden has been reseeded')); };
 $('popReseedB').onclick=()=>{ reseedBloom(); closeSet();
   toast(tt('信息流已重播 —— 清空这一屏','the feed has been reseeded')); };
-$('popLang').onclick=()=>{ setLang(LANG==='zh'?'en':'zh'); buildTuneRows(); buildThemeRows(); buildImgGrid(); syncBgLabel(); closeSet();
+/* 换语言时，设置面板里那些按语言生成的行也要重建。
+   按钮与 URL 参数 ?lang= 两条入口都走这里 —— 之前只有按钮会重建，
+   于是用 URL 配置成英文的展台，设置面板仍是中文。 */
+function switchLang(l){ setLang(l); buildTuneRows(); buildThemeRows(); buildImgGrid(); syncBgLabel(); }
+$('popLang').onclick=()=>{ switchLang(LANG==='zh'?'en':'zh'); closeSet();
   toast(tt('语言：中文','Language: English')); };
 
 /* 生态参数滑杆：改的就是这件作品的生态法则，即时生效并记住 */
@@ -3884,7 +3888,28 @@ function frame(now){
   audioTick(dt); sndTick(dt);
   syncCards();
   updateHUD(dt);
+  if(FPS)fpsTick(now, performance.now()-now);
   if(!VT)requestAnimationFrame(frame);
+}
+/* ---- 帧率计：只在 ?fps=1 时出现 ----
+   布展前在展台那台真机上开一次，看成熟后的花园能不能稳在 50fps 以上。
+   每半秒刷新一次：帧率、单帧耗时中位数与 p95、当前对象数。 */
+const FPS=!!Q.get('fps'); let fpsEl=null, fpsLast=0, fpsGaps=[], fpsWork=[];
+function fpsTick(now, work){
+  if(!fpsEl){ fpsEl=document.createElement('div');
+    fpsEl.style.cssText='position:fixed;left:8px;bottom:52px;z-index:99999;padding:4px 8px;'+
+      'font:11px/1.4 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.72);color:#9EF0B8;'+
+      'border-radius:3px;pointer-events:none;white-space:pre';
+    document.body.appendChild(fpsEl); }
+  if(fpsLast)fpsGaps.push(now-fpsLast); fpsLast=now; fpsWork.push(work);
+  if(fpsGaps.length>=30){
+    const s=a=>a.slice().sort((x,y)=>x-y), g=s(fpsGaps), w=s(fpsWork);
+    const pct=(a,q)=>a[Math.min(a.length-1,Math.floor(a.length*q))];
+    fpsEl.textContent=`${(1000/pct(g,.5)).toFixed(0)} fps  `+
+      `work ${pct(w,.5).toFixed(1)}ms  p95 ${pct(w,.95).toFixed(1)}ms\n`+
+      `${activePage}  feed ${B.items.length}  plants ${G.plants.length}`;
+    fpsGaps=[]; fpsWork=[];
+  }
 }
 applyLang();
 setTheme(THEME);
@@ -3898,7 +3923,7 @@ $('enter').onclick=()=>{ audioUnlock(); $('intro').remove(); };
 /* ---- 调试直达：?skip=1&page=garden&cam=430&warp=180&vt=1&probe=1 ---- */
 (function(){
   if(Q.get('skip')){ $('intro').remove(); }
-  if(Q.get('lang'))setLang(Q.get('lang'));
+  if(Q.get('lang'))switchLang(Q.get('lang'));
   if(Q.get('th'))setTheme(Q.get('th'));
   if(Q.get('show'))setShow(true);
   if(Q.get('page')==='garden')setPage('garden');
