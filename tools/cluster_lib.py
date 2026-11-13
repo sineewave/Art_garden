@@ -181,3 +181,36 @@ def near_dupe_rate(sigs, thresh=0.92, cap=800, seed=7):
     sim = M @ M.T
     np.fill_diagonal(sim, -1)
     return float((sim.max(1) > thresh).mean())
+
+
+def dedupe(sigs, spats, g_th=0.93, s_th=0.97, priority=None):
+    """贪心去近重复：按优先级（默认点赞多者先）逐张保留，与已保留的任一张
+    「结构」与「色彩布局」都足够像，就判为近重复丢掉。
+
+    结构用减去均值后的灰度指纹 —— 不减均值的话，灰度向量全为正，
+    任意两张图的余弦都偏高，0.92 这种阈值会误杀大量并不重复的图。
+    返回 (保留的下标列表, {丢弃下标: 与之相像的保留下标})。"""
+    n = len(sigs)
+    if n == 0:
+        return [], {}
+    G = np.stack(sigs).astype(np.float32)
+    G -= G.mean(1, keepdims=True)
+    G /= np.maximum(np.linalg.norm(G, axis=1, keepdims=True), 1e-6)
+    S = np.stack(spats).astype(np.float32)
+    S /= np.maximum(np.linalg.norm(S, axis=1, keepdims=True), 1e-6)
+    order = np.argsort(-np.asarray(priority)) if priority is not None else np.arange(n)
+    KG = np.zeros((n, G.shape[1]), np.float32)
+    KS = np.zeros((n, S.shape[1]), np.float32)
+    kept, kept_ids, dup = 0, [], {}
+    for i in order:
+        if kept:
+            sg = KG[:kept] @ G[i]
+            ss = KS[:kept] @ S[i]
+            hit = np.where((sg >= g_th) & (ss >= s_th))[0]
+            if len(hit):
+                dup[int(i)] = int(kept_ids[hit[np.argmax(sg[hit])]])
+                continue
+        KG[kept], KS[kept] = G[i], S[i]
+        kept_ids.append(int(i))
+        kept += 1
+    return sorted(kept_ids), dup

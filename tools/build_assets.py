@@ -252,7 +252,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tile", type=int, default=128)
     ap.add_argument("--atlas", type=int, default=2048)
-    ap.add_argument("--max", type=int, default=1600)
+    ap.add_argument("--max", type=int, default=8000)
     ap.add_argument("--quality", type=int, default=84)
     ap.add_argument("--k", type=int, default=8, help="物种数（对应花园里的八个物种位）")
     ap.add_argument("--w-prompt", type=float, default=0.62,
@@ -263,6 +263,12 @@ def main():
                     help="每条音频保留几秒（循环播放）")
     ap.add_argument("--ffmpeg", default=None,
                     help="ffmpeg 可执行文件路径（默认自动查找）")
+    ap.add_argument("--dedupe-g", type=float, default=0.93,
+                    help="近重复判定：结构相似度阈值（减均值灰度余弦）")
+    ap.add_argument("--dedupe-s", type=float, default=0.97,
+                    help="近重复判定：色彩布局相似度阈值；两项都超过才算重复")
+    ap.add_argument("--no-dedupe", action="store_true", help="不去近重复")
+    ap.add_argument("--per-post", type=int, default=2, help="同一个帖子最多保留几张")
     ap.add_argument("--extra-dir", default="assets/incoming",
                     help="自备图片目录：里面的图会和爬到的素材一起打进图集与聚类")
     args = ap.parse_args()
@@ -344,6 +350,50 @@ def main():
 
     if not keep:
         sys.exit("没有可用素材")
+
+    # ---------- 去重：同帖限量 + 近重复 ----------
+    # 同屏重复的另一半来源：同一个帖子里常是同一提示词换种子的几张图，
+    # id 不同、长得几乎一样。先按帖子限量，再按外观去近重复。
+    n0 = len(keep)
+    likes = [int(r.get("likes") or 0) for r in keep]
+    order = sorted(range(n0), key=lambda i: -likes[i])
+    post_n, sel = {}, []
+    for i in order:
+        pp = str(keep[i].get("post_id") or "")
+        if pp and keep[i].get("stratum") != "自备":
+            if post_n.get(pp, 0) >= args.per_post:
+                continue
+            post_n[pp] = post_n.get(pp, 0) + 1
+        sel.append(i)
+    sel.sort()
+    post_cut = n0 - len(sel)
+    dup = {}
+    if not args.no_dedupe and len(sel) > 1:
+        ksub, dsub = CL.dedupe([sigs[i] for i in sel], [spats[i] for i in sel],
+                               args.dedupe_g, args.dedupe_s,
+                               priority=[likes[i] for i in sel])
+        dup = {sel[a]: sel[b] for a, b in dsub.items()}
+        sel = [sel[i] for i in ksub]
+    if len(sel) < n0:
+        # 对照图：左边丢掉的，右边与它相像而被保留的 —— 用来检查阈值是否合理
+        pairs = list(dup.items())[:48]
+        if pairs:
+            T = tile // 2
+            sheet = Image.new("RGB", (T * 2 * 6 + 5 * 8, T * ((len(pairs) + 5) // 6)), (255, 255, 255))
+            for j, (a_, b_) in enumerate(pairs):
+                x0, y0 = (j % 6) * (T * 2 + 8), (j // 6) * T
+                sheet.paste(thumbs[a_].resize((T, T)), (x0, y0))
+                sheet.paste(thumbs[b_].resize((T, T)), (x0 + T, y0))
+            os.makedirs("data", exist_ok=True)
+            sheet.save("data/dedupe_pairs.jpg", quality=85)
+        print(f"\n去重：{n0} → {len(sel)}（同帖超限 {post_cut}，近重复 {len(dup)}）")
+        if dup:
+            print("    对照图 data/dedupe_pairs.jpg：每对左边是被去掉的，右边是保留的。"
+                  "若很多对其实并不像，调高 --dedupe-g / --dedupe-s 重跑")
+        keep = [keep[i] for i in sel]; thumbs = [thumbs[i] for i in sel]
+        sigs = [sigs[i] for i in sel]; spats = [spats[i] for i in sel]
+        hsvs = [hsvs[i] for i in sel]; prompts = [prompts[i] for i in sel]
+        models = [models[i] for i in sel]
 
     # ---------- 第二遍：聚类 ----------
     cov = sum(1 for x in prompts if x.strip()) / max(1, len(prompts))

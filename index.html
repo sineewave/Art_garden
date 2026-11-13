@@ -754,6 +754,7 @@ const ASSETS=(typeof window!=='undefined'&&window.ATTENTION_GARDEN_ASSETS)||null
 const ATLAS=[]; let atlasReady=0;
 const ASSET_BUCKET=[]; let ASSET_ALL=[];
 const VIDEO_BUCKET=[], VIDEO_ALL=[], POOLS={};
+const VIDEO_FULL=400;   // 视频池达到这个数，影像偏好才按设定值生效
 /* ---- 不放回抽样 ----
    原来是每次从桶里随机抓一张：一个桶约 90 条，而同屏要画一百多枚画作，
    按生日悖论必然大量撞车；同种成丛之后这些重复还全挤在一起。
@@ -1253,7 +1254,11 @@ function makeArt(styleId, palIdx){
     let name=(bi2!==undefined&&POOLS['b'+bi2]&&POOLS['b'+bi2].length)?('b'+bi2):'all';
     // 影像偏好：视频是语料里最稀有、单位算力也最贵的一类。
     // 0 = 严格按语料真实比例；调高只影响"挑哪一张来看"，不改变任何统计数字。
-    if((TUNE.videoBias||0)>0&&VIDEO_ALL.length&&Math.random()<TUNE.videoBias){
+    // 偏好按视频池的大小打折：同屏要画两百来张，视频池只有几十个时，
+    // 0.35 的偏好意味着一半以上的视频同时在屏上 —— 重复就是这么来的。
+    // 池子到 VIDEO_FULL 个才给满偏好，少于它按比例缩小。
+    const vBias=(TUNE.videoBias||0)*Math.min(1,VIDEO_ALL.length/VIDEO_FULL);
+    if(vBias>0&&VIDEO_ALL.length&&Math.random()<vBias){
       // 视频本来就稀少，按桶再分每桶只剩几个，抽出来会一直是同几张；
       // 桶内不足 8 个就退回全局视频池 —— 宁可弱一点的同族性，也不要重复
       const vb=(bi2!==undefined)?POOLS['v'+bi2]:null;
@@ -1500,7 +1505,12 @@ function spawnItem(px,py,parent){
   }
   const v=viewBounds(), m=40;
   const type=parent?parent.type:pickType();
-  const art=parent&&Math.random()<.55?parent.art:makeArt();
+  // 繁殖：子代多数从父代同一个簇里另取一张 —— 看得出是一家，但不是同一张图；
+  // 只有一成原样复制（相当于平台上的转发）。原来 55% 原样复制，是同屏重复的最大来源。
+  let art;
+  if(parent&&Math.random()<.10) art=parent.art;
+  else if(parent&&parent.art) art=makeArt(undefined, parent.art.real&&parent.art.cluster!=null ? parent.art.cluster : parent.art.palIdx);
+  else art=makeArt();
   const it={
     id:'OB-'+pad(++S.itemSeq),
     x: px!==undefined?px:R(v.x0-m,v.x1+m),

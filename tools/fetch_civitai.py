@@ -10,9 +10,10 @@
 本脚本从多组 (sort, period) 拉取并按互动量分桶，保证冷热都有。
 
 用法：
-    python3 tools/fetch_civitai.py --target 700
-    python3 tools/fetch_civitai.py --target 700 --api-key YOUR_KEY   # 更高速率上限
-    python3 tools/fetch_civitai.py --target 200 --video-only         # 补视频
+    python3 tools/fetch_civitai.py --probe-meta                      # 先跑：看提示词能不能拿到
+    python3 tools/fetch_civitai.py --target 4500 --videos 400         # 扩容（可中断、可续跑）
+    python3 tools/fetch_civitai.py --target 4500 --api-key YOUR_KEY   # 更高速率上限
+    python3 tools/fetch_civitai.py --target 0 --videos 300            # 只补视频
 
 输出：
     data/raw/civitai/<id>.<ext>     媒体文件（已缩到 width=512，省时间）
@@ -32,12 +33,25 @@ UA = "AttentionGarden-ArtProject/1.0 (research; contact via project repo)"
 # 分层抽样计划：(sort, period, 想要的条数占比)
 # Newest 是关键 —— 那一批几乎没有互动，是"被忽略者"的样本
 PLAN = [
-    ("Most Reactions", "Week",     0.22),
-    ("Most Reactions", "Month",    0.18),
-    ("Most Comments",  "Month",    0.12),
-    ("Newest",         "Day",      0.28),   # 长尾：刚生成、还没人看
-    ("Most Reactions", "AllTime",  0.20),
+    ("Most Reactions", "Week",     0.14),
+    ("Most Reactions", "Month",    0.12),
+    ("Most Reactions", "Year",     0.08),
+    ("Most Reactions", "AllTime",  0.12),
+    ("Most Comments",  "Week",     0.06),
+    ("Most Comments",  "Month",    0.08),
+    ("Most Collected", "Month",    0.06),   # 被收藏 ≈ 平台上的"转存"
+    ("Newest",         "Day",      0.20),   # 长尾：刚生成、还没人看
+    ("Newest",         "Week",     0.14),
 ]
+# 某一层接口不接受（返回 400）或没拉够时，缺口由这里补齐，保持冷热比例大致不变
+TOPUP = [("Newest", "Week"), ("Most Reactions", "Month"), ("Newest", "Month")]
+# 视频单独一轮：视频只占信息流的几个百分点，混在图片里抓永远凑不够
+VIDEO_PLAN = [("Most Reactions", "Week"), ("Most Reactions", "Month"),
+              ("Newest", "Week"), ("Most Reactions", "Year"), ("Newest", "Month")]
+
+# withMeta：新版接口默认不带 meta（提示词与参数），要显式要 —— 上一轮提示词覆盖率 0% 很可能就是这个原因。
+# 接口若不认这个参数（返回 400），自动关掉再重试。
+WITH_META = {"on": True}
 
 
 def http_json(url, api_key=None, tries=4, verbose=False):
@@ -235,15 +249,24 @@ def norm(item):
         "h": item.get("height") or 0,
         "created": item.get("createdAt") or "",
         "stratum": 2026,
-        "prompt": (meta.get("prompt") or "")[:600],
+        "prompt": (meta.get("prompt") or "")[:1200],
         "negative": (meta.get("negativePrompt") or "")[:240],
         "model": model[:120],
         "sampler": meta.get("sampler") or "",
         "steps": meta.get("steps") or meta.get("Steps") or 0,
         "cfg": meta.get("cfgScale") or meta.get("CFG scale") or 0,
         "seed": meta.get("seed") or 0,
+        "resources": [{"name": r.get("name"), "type": r.get("type")}
+                      for r in (meta.get("resources") or []) if isinstance(r, dict)][:8],
         "likes": likes,
         "comments": int(stats.get("commentCount") or 0),
+        "collected": int(stats.get("collectedCount") or 0),     # 收藏 / 转存
+        "tipped": int(stats.get("tippedAmountCount") or 0),     # 打赏（Buzz）
+        "dislikes": int(stats.get("dislikeCount") or 0),
+        "reactions": {k: int(stats.get(k) or 0) for k in
+                      ("likeCount", "heartCount", "laughCount", "cryCount")},
+        "tags": [t.get("name") if isinstance(t, dict) else t
+                 for t in (item.get("tags") or [])][:12],
         "base_model": dedupe_doubled(item.get("baseModel") or ""),
         "model_version_ids": item.get("modelVersionIds") or [],
         "post_id": item.get("postId") or 0,
@@ -307,8 +330,12 @@ def probe_meta(api_key):
     seen_base = {}
     for sort, period in [("Most Reactions", "Week"), ("Newest", "Day"),
                          ("Most Reactions", "AllTime")]:
-        q = {"limit": 100, "sort": sort, "period": period, "nsfw": "None"}
+        q = {"limit": 100, "sort": sort, "period": period, "nsfw": "None", "withMeta": "true"}
         d = http_json(f"{API}?{urllib.parse.urlencode(q)}", api_key)
+        if not d:
+            print(f"  {sort}/{period} 带 withMeta 失败，改为不带重试")
+            q.pop("withMeta")
+            d = http_json(f"{API}?{urllib.parse.urlencode(q)}", api_key)
         if not d:
             continue
         items = d.get("items") or []
@@ -394,10 +421,14 @@ def main():
                     help="只取 3 条并打印真实字段结构 —— 正式开爬前先跑这个")
     ap.add_argument("--probe-meta", action="store_true",
                     help="追查生成参数：meta 覆盖率、单图端点、模型名换取")
-    ap.add_argument("--target", type=int, default=700, help="目标条数")
+    ap.add_argument("--target", type=int, default=4500, help="本次新增图片目标条数（0 = 不抓图片）")
+    ap.add_argument("--videos", type=int, default=400, help="本次新增视频目标条数（0 = 不抓视频）")
+    ap.add_argument("--per-post", type=int, default=2,
+                    help="同一个帖子最多收几张（帖子内常是近似图）")
+    ap.add_argument("--max-pages", type=int, default=150, help="每一层最多翻几页（每页 100 条）")
+    ap.add_argument("--no-with-meta", action="store_true", help="不请求 meta（提示词与参数）")
     ap.add_argument("--api-key", default=os.environ.get("CIVITAI_API_KEY"))
     ap.add_argument("--width", type=int, default=512, help="下载宽度（越小越快）")
-    ap.add_argument("--video-only", action="store_true")
     ap.add_argument("--max-video-mb", type=float, default=8.0,
                     help="单个视频体积上限，超过直接跳过")
     ap.add_argument("--sleep", type=float, default=0.7, help="每页之间的间隔秒")
@@ -416,55 +447,70 @@ def main():
 
     load_model_cache()
     mbudget = {"left": args.model_lookups}
+    WITH_META["on"] = not args.no_with_meta
 
     os.makedirs(RAW, exist_ok=True)
     os.makedirs(os.path.dirname(META), exist_ok=True)
 
-    seen = set()
+    seen, per_post = set(), {}
     if os.path.exists(META):
         for line in open(META, encoding="utf-8"):
             try:
                 d = json.loads(line)
                 if d.get("src") == "civitai":
                     seen.add(d["id"])
+                    pp = str(d.get("post_id") or "")
+                    if pp:
+                        per_post[pp] = per_post.get(pp, 0) + 1
             except Exception:
                 pass
     print(f"已有 {len(seen)} 条 civitai 记录，继续追加\n")
 
     out = open(META, "a", encoding="utf-8")
-    got = 0
-    stats_ok = 0
-    nsfw_skipped = 0
-    big_skipped = 0
-    plan = [(s, p, max(1, int(args.target * w))) for s, p, w in PLAN]
-    if args.video_only:
-        plan = [("Most Reactions", "Month", args.target),
-                ("Newest", "Week", args.target)]
+    C = {"got": 0, "vid": 0, "stats": 0, "prompt": 0, "nsfw": 0, "big": 0, "post": 0}
 
-    for sort, period, want in plan:
-        if got >= args.target:
-            break
-        print(f"── {sort} / {period}  目标 {want} 条")
-        cursor, page, taken = None, 0, 0
-        while taken < want and got < args.target and page < 40:
-            q = {"limit": 100, "sort": sort, "period": period, "nsfw": "None"}
-            if cursor:
-                q["cursor"] = cursor
+    def page(sort, period, cursor):
+        q = {"limit": 100, "sort": sort, "period": period, "nsfw": "None"}
+        if WITH_META["on"]:
+            q["withMeta"] = "true"
+        if cursor:
+            q["cursor"] = cursor
+        data = http_json(f"{API}?{urllib.parse.urlencode(q)}", args.api_key)
+        if data is None and WITH_META["on"]:
+            # 失败可能是这一层本身不被接受，也可能是不认 withMeta：去掉它再试一次，
+            # 只有去掉后成功，才说明是 withMeta 的问题，之后都不再带
+            q.pop("withMeta", None)
             data = http_json(f"{API}?{urllib.parse.urlencode(q)}", args.api_key)
+            if data is not None:
+                print("    接口不接受 withMeta，之后都不再带", flush=True)
+                WITH_META["on"] = False
+        return data
+
+    def crawl(sort, period, want, videos_only):
+        """从一个 (sort, period) 层拉取，最多 want 条新记录；返回实际新增数。"""
+        print(f"── {sort} / {period}  {'视频 ' if videos_only else ''}目标 {want} 条", flush=True)
+        cursor, pages, taken = None, 0, 0
+        while taken < want and pages < args.max_pages:
+            data = page(sort, period, cursor)
             if not data or not data.get("items"):
                 break
-            page += 1
+            pages += 1
             for it in data["items"]:
-                if got >= args.target or taken >= want:
+                if taken >= want:
                     break
                 rec = norm(it)
                 if rec["id"] in seen or not rec["media"]:
                     continue
                 if not is_safe(rec):
-                    nsfw_skipped += 1
+                    C["nsfw"] += 1
                     continue
                 is_video = rec["type"] == "video" or rec["media"].lower().endswith((".mp4", ".webm"))
-                if args.video_only and not is_video:
+                if videos_only and not is_video:
+                    continue
+                pp = str(rec.get("post_id") or "")
+                # 同一个帖子常是同一提示词换种子的一组近似图 —— 限量，否则同屏一排长得一样
+                if pp and per_post.get(pp, 0) >= args.per_post:
+                    C["post"] += 1
                     continue
                 ext = ".mp4" if is_video else ".jpg"
                 path = os.path.join(RAW, rec["id"] + ext)
@@ -472,38 +518,68 @@ def main():
                 cap = args.max_video_mb * (1 << 20) if is_video else 4 * (1 << 20)
                 if not os.path.exists(path):
                     if not download(url, path, max_bytes=cap):
-                        big_skipped += 1
+                        C["big"] += 1
                         continue
                 rec["file"] = path
                 rec["type"] = "video" if is_video else "image"
+                rec["sort"], rec["period"] = sort, period     # 记下它是从哪一层来的
+                rec["fetched"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 if not args.no_resolve_models:
                     mn = resolve_model_name(rec, args.api_key, mbudget)
                     if mn:
                         rec["model"] = mn
                 seen.add(rec["id"])
+                if pp:
+                    per_post[pp] = per_post.get(pp, 0) + 1
                 out.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 out.flush()
-                got += 1
                 taken += 1
-                if rec["has_stats"]:
-                    stats_ok += 1
-                if got % 25 == 0:
-                    print(f"    {got}/{args.target}  最新: {rec['model'][:28]}  "
-                          f"♥{rec['likes']}", flush=True)
+                C["got"] += 1
+                C["vid"] += 1 if is_video else 0
+                C["stats"] += 1 if rec["has_stats"] else 0
+                C["prompt"] += 1 if rec["prompt"] else 0
+                if C["got"] % 50 == 0:
+                    print(f"    新增 {C['got']}（视频 {C['vid']}）  有提示词 {C['prompt']}  "
+                          f"最新: {rec['model'][:24]}  ♥{rec['likes']}", flush=True)
             cursor = (data.get("metadata") or {}).get("nextCursor")
             if not cursor:
                 break
             time.sleep(args.sleep)
+        if pages >= args.max_pages and taken < want:
+            print(f"    到达翻页上限 {args.max_pages} 页，本层只拿到 {taken}", flush=True)
+        return taken
 
-    out.close()
-    save_model_cache()
-    print(f"\n完成：新增 {got} 条 → {META}")
-    print(f"  跳过：分级不安全 {nsfw_skipped} 条，体积超限 {big_skipped} 条")
+    try:
+        if args.target > 0:
+            short = 0
+            for sort, period, w in PLAN:
+                want = max(1, int(args.target * w))
+                short += want - crawl(sort, period, want, False)
+            for sort, period in TOPUP:
+                if short <= 0:
+                    break
+                short -= crawl(sort, period, short, False)
+        if args.videos > 0:
+            left = args.videos
+            for sort, period in VIDEO_PLAN:
+                if left <= 0:
+                    break
+                left -= crawl(sort, period, left, True)
+    except KeyboardInterrupt:
+        print("\n中断 —— 已写入的记录都在，下次运行会接着抓")
+    finally:
+        out.close()
+        save_model_cache()
+
+    got = C["got"]
+    print(f"\n完成：新增 {got} 条（视频 {C['vid']}）→ {META}")
+    print(f"  跳过：分级不安全 {C['nsfw']}，体积超限 {C['big']}，同帖超限 {C['post']}")
+    print(f"  withMeta：{'开' if WITH_META['on'] else '关（接口不支持）'}")
     if got:
-        print(f"stats 字段可用率：{stats_ok}/{got} = {stats_ok/got*100:.0f}%")
-        if stats_ok / got < 0.5:
-            print("  ⚠ 互动数据大面积缺失 —— 这是已知 issue。"
-                  "若要靠真实互动驱动花园，需改走单个 image 详情端点或换源。")
+        print(f"  stats 可用率 {C['stats']}/{got} = {C['stats']/got*100:.0f}%   "
+              f"提示词覆盖率 {C['prompt']}/{got} = {C['prompt']/got*100:.0f}%")
+        if C["stats"] / got < 0.5:
+            print("  ⚠ 互动数据大面积缺失 —— 这是已知 issue。")
 
 
 if __name__ == "__main__":
