@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" fill="#05070B"/>
+<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="gl2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter></defs>
+<text x="80.0" y="92.0" font-family="Inter Display" font-size="46" fill="#EEF3FA" text-anchor="start" font-weight="700" letter-spacing="-1" opacity="1">Where attention comes from</text>
+<text x="82.0" y="122.0" font-family="Inter" font-size="16" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">Sources feed one plant’s attention; attention sets the pace of growth; the stage it reaches decides how it ends</text>
+<text x="1840.0" y="92.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="3" opacity="1">ATTENTION GARDEN · 02</text>
+<text x="80.0" y="180.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">SOURCES</text>
+<rect x="400" y="200" width="10" height="90" rx="5" fill="#FFD27A" filter="url(#gl)"/>
+<text x="80.0" y="240.0" font-family="Inter" font-size="15" fill="#FFD27A" text-anchor="start" font-weight="700" letter-spacing="1.2" opacity="1">VISITOR GAZE</text>
+<text x="80.0" y="262.0" font-family="Inter" font-size="13" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">drains the visitor’s meter</text>
+<rect x="400" y="312" width="10" height="90" rx="5" fill="#5EC8FF" filter="url(#gl)"/>
+<text x="80.0" y="352.0" font-family="Inter" font-size="15" fill="#5EC8FF" text-anchor="start" font-weight="700" letter-spacing="1.2" opacity="1">ALGORITHMIC GAZE</text>
+<text x="80.0" y="374.0" font-family="Inter" font-size="13" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">after 60 s alone · ×0.12</text>
+<rect x="400" y="424" width="10" height="90" rx="5" fill="#8593AA" filter="url(#gl)"/>
+<text x="80.0" y="464.0" font-family="Inter" font-size="15" fill="#8593AA" text-anchor="start" font-weight="700" letter-spacing="1.2" opacity="1">BASELINE EXPOSURE</text>
+<text x="80.0" y="486.0" font-family="Inter" font-size="13" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">recommendation traffic · 0.24</text>
+<rect x="400" y="536" width="10" height="90" rx="5" fill="#9B7BFF" filter="url(#gl)"/>
+<text x="80.0" y="576.0" font-family="Inter" font-size="15" fill="#9B7BFF" text-anchor="start" font-weight="700" letter-spacing="1.2" opacity="1">TREND FEEDING</text>
+<text x="80.0" y="598.0" font-family="Inter" font-size="13" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">≥ 3 of a species in bloom</text>
+<rect x="400" y="648" width="10" height="90" rx="5" fill="#5EE0B5" filter="url(#gl)"/>
+<text x="80.0" y="688.0" font-family="Inter" font-size="15" fill="#5EE0B5" text-anchor="start" font-weight="700" letter-spacing="1.2" opacity="1">PLATFORM LIKES</text>
+<text x="80.0" y="710.0" font-family="Inter" font-size="13" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">set body size at birth</text>
+<defs><linearGradient id="rg1" gradientUnits="userSpaceOnUse" x1="410" y1="0" x2="820" y2="0"><stop offset="0" stop-color="#FFD27A" stop-opacity="0.34"/><stop offset="1" stop-color="#EEF3FA" stop-opacity="0.18700000000000003"/></linearGradient></defs>
+<path d="M410.0,210.0 C615.0,210.0 615.0,256.0 820.0,256.0 L820.0,341.5 C615.0,341.5 615.0,280.0 410.0,280.0 Z" fill="url(#rg1)"/>
+<path d="M410.0,210.0 C615.0,210.0 615.0,256.0 820.0,256.0" fill="none" stroke="#FFD27A" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M410.0,280.0 C615.0,280.0 615.0,341.5 820.0,341.5" fill="none" stroke="#FFD27A" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<defs><linearGradient id="rg2" gradientUnits="userSpaceOnUse" x1="410" y1="0" x2="820" y2="0"><stop offset="0" stop-color="#5EC8FF" stop-opacity="0.34"/><stop offset="1" stop-color="#EEF3FA" stop-opacity="0.18700000000000003"/></linearGradient></defs>
+<path d="M410.0,322.0 C615.0,322.0 615.0,353.5 820.0,353.5 L820.0,439.0 C615.0,439.0 615.0,392.0 410.0,392.0 Z" fill="url(#rg2)"/>
+<path d="M410.0,322.0 C615.0,322.0 615.0,353.5 820.0,353.5" fill="none" stroke="#5EC8FF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M410.0,392.0 C615.0,392.0 615.0,439.0 820.0,439.0" fill="none" stroke="#5EC8FF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<defs><linearGradient id="rg3" gradientUnits="userSpaceOnUse" x1="410" y1="0" x2="820" y2="0"><stop offset="0" stop-color="#8593AA" stop-opacity="0.34"/><stop offset="1" stop-color="#EEF3FA" stop-opacity="0.18700000000000003"/></linearGradient></defs>
+<path d="M410.0,434.0 C615.0,434.0 615.0,451.0 820.0,451.0 L820.0,536.5 C615.0,536.5 615.0,504.0 410.0,504.0 Z" fill="url(#rg3)"/>
+<path d="M410.0,434.0 C615.0,434.0 615.0,451.0 820.0,451.0" fill="none" stroke="#8593AA" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M410.0,504.0 C615.0,504.0 615.0,536.5 820.0,536.5" fill="none" stroke="#8593AA" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<defs><linearGradient id="rg4" gradientUnits="userSpaceOnUse" x1="410" y1="0" x2="820" y2="0"><stop offset="0" stop-color="#9B7BFF" stop-opacity="0.34"/><stop offset="1" stop-color="#EEF3FA" stop-opacity="0.18700000000000003"/></linearGradient></defs>
+<path d="M410.0,546.0 C615.0,546.0 615.0,548.5 820.0,548.5 L820.0,634.0 C615.0,634.0 615.0,616.0 410.0,616.0 Z" fill="url(#rg4)"/>
+<path d="M410.0,546.0 C615.0,546.0 615.0,548.5 820.0,548.5" fill="none" stroke="#9B7BFF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M410.0,616.0 C615.0,616.0 615.0,634.0 820.0,634.0" fill="none" stroke="#9B7BFF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<rect x="820" y="250" width="14" height="390" rx="7" fill="#EEF3FA" filter="url(#gl)"/>
+<text x="827.0" y="214.0" font-family="Inter" font-size="12" fill="#EEF3FA" text-anchor="middle" font-weight="700" letter-spacing="2" opacity="1">ATTENTION</text>
+<text x="827.0" y="234.0" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">decay 0.34 · faster when crowded</text>
+<text x="1150.0" y="164.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="700" letter-spacing="1.6" opacity="1">STAGES · height = base duration</text>
+<defs><linearGradient id="rg5" gradientUnits="userSpaceOnUse" x1="834" y1="0" x2="1150" y2="0"><stop offset="0" stop-color="#EEF3FA" stop-opacity="0.09"/><stop offset="1" stop-color="#5EC8FF" stop-opacity="0.0495"/></linearGradient></defs>
+<path d="M834.0,260.0 C992.0,260.0 992.0,180.0 1150.0,180.0 L1150.0,830.0 C992.0,830.0 992.0,630.0 834.0,630.0 Z" fill="url(#rg5)"/>
+<path d="M834.0,260.0 C992.0,260.0 992.0,180.0 1150.0,180.0" fill="none" stroke="#EEF3FA" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M834.0,630.0 C992.0,630.0 992.0,830.0 1150.0,830.0" fill="none" stroke="#EEF3FA" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<text x="995.0" y="270.0" font-family="Inter" font-size="14" fill="#EEF3FA" text-anchor="middle" font-weight="600" letter-spacing="0" opacity="1">sets the pace</text>
+<text x="995.0" y="290.0" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">vigor 0.28 – 1.6</text>
+<rect x="1150.0" y="180.0" width="170.0" height="26.1" rx="6" stroke="#5EE0B5" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="180.0" width="170" height="26.1" rx="6" fill="#5EE0B5" opacity=".16"/>
+<text x="1164.0" y="198.0" font-family="Inter" font-size="14" fill="#5EE0B5" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Seed</text>
+<text x="1310.0" y="197.0" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">16 s</text>
+<rect x="1150.0" y="211.1" width="170.0" height="32.6" rx="6" stroke="#5EE0B5" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="211.1" width="170" height="32.6" rx="6" fill="#5EE0B5" opacity=".16"/>
+<text x="1164.0" y="232.4" font-family="Inter" font-size="14" fill="#5EE0B5" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Sprout</text>
+<text x="1310.0" y="231.4" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">20 s</text>
+<rect x="1150.0" y="248.7" width="170.0" height="42.4" rx="6" stroke="#5EE0B5" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="248.7" width="170" height="42.4" rx="6" fill="#5EE0B5" opacity=".16"/>
+<text x="1164.0" y="274.9" font-family="Inter" font-size="14" fill="#5EE0B5" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Seedling</text>
+<text x="1310.0" y="273.9" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">26 s</text>
+<rect x="1150.0" y="296.1" width="170.0" height="48.9" rx="6" stroke="#5EE0B5" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="296.1" width="170" height="48.9" rx="6" fill="#5EE0B5" opacity=".16"/>
+<text x="1164.0" y="325.6" font-family="Inter" font-size="14" fill="#5EE0B5" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Stemming</text>
+<text x="1310.0" y="324.6" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">30 s</text>
+<rect x="1150.0" y="350.1" width="170.0" height="55.5" rx="6" stroke="#5EC8FF" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="350.1" width="170" height="55.5" rx="6" fill="#5EC8FF" opacity=".16"/>
+<text x="1164.0" y="382.8" font-family="Inter" font-size="14" fill="#5EC8FF" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Bud</text>
+<text x="1310.0" y="381.8" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">34 s</text>
+<rect x="1150.0" y="410.5" width="170.0" height="75.0" rx="6" stroke="#5EC8FF" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="410.5" width="170" height="75.0" rx="6" fill="#5EC8FF" opacity=".16"/>
+<text x="1164.0" y="453.0" font-family="Inter" font-size="14" fill="#5EC8FF" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Bloom</text>
+<text x="1310.0" y="452.0" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">46 s</text>
+<rect x="1150.0" y="490.5" width="170.0" height="101.1" rx="6" stroke="#4C7DFF" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="490.5" width="170" height="101.1" rx="6" fill="#4C7DFF" opacity=".16"/>
+<text x="1164.0" y="546.1" font-family="Inter" font-size="14" fill="#4C7DFF" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Flourish</text>
+<text x="1310.0" y="545.1" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">62 s</text>
+<rect x="1150.0" y="596.7" width="170.0" height="130.5" rx="6" stroke="#3FE0C0" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="596.7" width="170" height="130.5" rx="6" fill="#3FE0C0" opacity=".16"/>
+<text x="1164.0" y="666.9" font-family="Inter" font-size="14" fill="#3FE0C0" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Colony</text>
+<text x="1310.0" y="665.9" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">trend</text>
+<rect x="1150.0" y="732.1" width="170.0" height="97.9" rx="6" stroke="#9B7BFF" stroke-width="1.6" fill="#05070B" opacity="1"/>
+<rect x="1150" y="732.1" width="170" height="97.9" rx="6" fill="#9B7BFF" opacity=".16"/>
+<text x="1164.0" y="786.1" font-family="Inter" font-size="14" fill="#9B7BFF" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Senesce</text>
+<text x="1310.0" y="785.1" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">60 s</text>
+<defs><linearGradient id="rg6" gradientUnits="userSpaceOnUse" x1="410" y1="0" x2="1150" y2="0"><stop offset="0" stop-color="#5EE0B5" stop-opacity="0.22"/><stop offset="1" stop-color="#4C7DFF" stop-opacity="0.12100000000000001"/></linearGradient></defs>
+<path d="M410.0,660.0 C780.0,660.0 780.0,414.5 1150.0,414.5 L1150.0,587.7 C780.0,587.7 780.0,726.0 410.0,726.0 Z" fill="url(#rg6)"/>
+<path d="M410.0,660.0 C780.0,660.0 780.0,414.5 1150.0,414.5" fill="none" stroke="#5EE0B5" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M410.0,726.0 C780.0,726.0 780.0,587.7 1150.0,587.7" fill="none" stroke="#5EE0B5" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<text x="610.0" y="668.0" font-family="Inter" font-size="12" fill="#5EE0B5" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">body size</text>
+<text x="1550.0" y="180.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">OUTCOMES</text>
+<defs><linearGradient id="rg7" gradientUnits="userSpaceOnUse" x1="1320" y1="0" x2="1584" y2="0"><stop offset="0" stop-color="#5EC8FF" stop-opacity="0.28"/><stop offset="1" stop-color="#5EC8FF" stop-opacity="0.15400000000000003"/></linearGradient></defs>
+<path d="M1320.0,413.5 C1452.0,413.5 1452.0,226.0 1584.0,226.0 L1584.0,254.0 C1452.0,254.0 1452.0,588.7 1320.0,588.7 Z" fill="url(#rg7)"/>
+<path d="M1320.0,413.5 C1452.0,413.5 1452.0,226.0 1584.0,226.0" fill="none" stroke="#5EC8FF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M1320.0,588.7 C1452.0,588.7 1452.0,254.0 1584.0,254.0" fill="none" stroke="#5EC8FF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<g transform="translate(1640.0,240.0) scale(1,1.0)" filter="url(#gl)" opacity="1">
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(0.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(22.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(45.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(67.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(90.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(112.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(135.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(157.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(180.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(202.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(225.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(247.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(270.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(292.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(315.0)" fill="none" stroke="#5EC8FF" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(337.5)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<circle r="7.5" fill="#5EC8FF"/></g>
+<text x="1704.0" y="236.0" font-family="Inter" font-size="16" fill="#5EC8FF" text-anchor="start" font-weight="700" letter-spacing="1.4" opacity="1">BLOOM</text>
+<text x="1704.0" y="258.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">grows, branches, drops seeds</text>
+<defs><linearGradient id="rg8" gradientUnits="userSpaceOnUse" x1="1320" y1="0" x2="1584" y2="0"><stop offset="0" stop-color="#3FE0C0" stop-opacity="0.28"/><stop offset="1" stop-color="#3FE0C0" stop-opacity="0.15400000000000003"/></linearGradient></defs>
+<path d="M1320.0,599.7 C1452.0,599.7 1452.0,416.0 1584.0,416.0 L1584.0,444.0 C1452.0,444.0 1452.0,724.1 1320.0,724.1 Z" fill="url(#rg8)"/>
+<path d="M1320.0,599.7 C1452.0,599.7 1452.0,416.0 1584.0,416.0" fill="none" stroke="#3FE0C0" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M1320.0,724.1 C1452.0,724.1 1452.0,444.0 1584.0,444.0" fill="none" stroke="#3FE0C0" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<g transform="translate(1640.0,430.0) scale(1,1.0)" filter="url(#gl)" opacity="1">
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(0.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(15.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(30.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(45.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(60.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(75.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(90.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(105.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(120.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(135.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(150.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(165.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(180.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(195.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(210.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(225.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(240.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(255.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(270.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(285.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(300.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(315.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(330.0)" fill="none" stroke="#3FE0C0" stroke-width="1.8"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(345.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<circle r="7.5" fill="#3FE0C0"/></g>
+<text x="1704.0" y="426.0" font-family="Inter" font-size="16" fill="#3FE0C0" text-anchor="start" font-weight="700" letter-spacing="1.4" opacity="1">COLONY</text>
+<text x="1704.0" y="448.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">only while its species trends</text>
+<defs><linearGradient id="rg9" gradientUnits="userSpaceOnUse" x1="1320" y1="0" x2="1584" y2="0"><stop offset="0" stop-color="#9AA3AF" stop-opacity="0.14"/><stop offset="1" stop-color="#9AA3AF" stop-opacity="0.07700000000000001"/></linearGradient></defs>
+<path d="M1320.0,353.1 C1452.0,353.1 1452.0,606.0 1584.0,606.0 L1584.0,634.0 C1452.0,634.0 1452.0,588.7 1320.0,588.7 Z" fill="url(#rg9)"/>
+<path d="M1320.0,353.1 C1452.0,353.1 1452.0,606.0 1584.0,606.0" fill="none" stroke="#9AA3AF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M1320.0,588.7 C1452.0,588.7 1452.0,634.0 1584.0,634.0" fill="none" stroke="#9AA3AF" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<g transform="translate(1640.0,620.0) scale(1,1.0)" filter="url(#gl)" opacity="1">
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(0.0)" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-dasharray="5 4"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(30.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(60.0)" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-dasharray="5 4"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(90.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(120.0)" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-dasharray="5 4"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(150.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(180.0)" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-dasharray="5 4"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(210.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(240.0)" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-dasharray="5 4"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(270.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<ellipse cx="24.2" cy="0" rx="20.7" ry="8.8" transform="rotate(300.0)" fill="none" stroke="#9AA3AF" stroke-width="1.8" stroke-dasharray="5 4"/>
+<ellipse cx="13.2" cy="0" rx="8.8" ry="3.5" transform="rotate(330.0)" fill="none" stroke="#EEF3FA" stroke-width="0.9900000000000001" opacity=".75"/>
+<circle r="7.5" fill="#9AA3AF"/></g>
+<text x="1704.0" y="616.0" font-family="Inter" font-size="16" fill="#9AA3AF" text-anchor="start" font-weight="700" letter-spacing="1.4" opacity="1">DORMANT</text>
+<text x="1704.0" y="638.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">attention ran out · a look revives it</text>
+<defs><linearGradient id="rg10" gradientUnits="userSpaceOnUse" x1="1320" y1="0" x2="1584" y2="0"><stop offset="0" stop-color="#D98CA8" stop-opacity="0.28"/><stop offset="1" stop-color="#D98CA8" stop-opacity="0.15400000000000003"/></linearGradient></defs>
+<path d="M1320.0,735.1 C1452.0,735.1 1452.0,786.0 1584.0,786.0 L1584.0,814.0 C1452.0,814.0 1452.0,827.0 1320.0,827.0 Z" fill="url(#rg10)"/>
+<path d="M1320.0,735.1 C1452.0,735.1 1452.0,786.0 1584.0,786.0" fill="none" stroke="#D98CA8" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<path d="M1320.0,827.0 C1452.0,827.0 1452.0,814.0 1584.0,814.0" fill="none" stroke="#D98CA8" stroke-width="1" opacity=".75" filter="url(#gl)"/>
+<rect x="1638.2" y="805.6" width="5.0" height="5.0" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.44298336248144615"/>
+<rect x="1654.5" y="804.3" width="7.6" height="7.6" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.8302714108974851"/>
+<rect x="1638.4" y="784.3" width="5.7" height="5.7" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.5160095860648701"/>
+<rect x="1641.8" y="805.3" width="4.1" height="4.1" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.9064853788568362"/>
+<rect x="1653.7" y="764.6" width="7.0" height="7.0" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.466061370811544"/>
+<rect x="1626.0" y="823.7" width="6.7" height="6.7" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.8627890147948083"/>
+<rect x="1642.4" y="791.9" width="6.0" height="6.0" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.7530208739098839"/>
+<rect x="1626.2" y="796.9" width="5.4" height="5.4" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.4036077243592342"/>
+<rect x="1672.5" y="781.6" width="5.7" height="5.7" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.5301474437439948"/>
+<rect x="1658.9" y="781.7" width="7.4" height="7.4" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.8588264529341807"/>
+<rect x="1616.5" y="796.0" width="6.0" height="6.0" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.6086258103759843"/>
+<rect x="1645.0" y="810.2" width="7.1" height="7.1" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.3759430814433491"/>
+<rect x="1665.6" y="806.1" width="4.4" height="4.4" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.6707730769276532"/>
+<rect x="1618.6" y="799.2" width="8.0" height="8.0" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.4673440965999892"/>
+<rect x="1626.6" y="803.2" width="6.2" height="6.2" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.5157829009758099"/>
+<rect x="1616.8" y="824.4" width="4.6" height="4.6" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.6851173901500351"/>
+<rect x="1645.0" y="793.8" width="3.3" height="3.3" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.48732166414325884"/>
+<rect x="1640.6" y="769.4" width="4.2" height="4.2" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.5486401972230408"/>
+<rect x="1648.2" y="818.5" width="3.2" height="3.2" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.768375128876911"/>
+<rect x="1670.1" y="770.9" width="6.7" height="6.7" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.9259205549677706"/>
+<rect x="1651.5" y="797.9" width="7.8" height="7.8" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.8151436611350891"/>
+<rect x="1601.7" y="819.3" width="6.1" height="6.1" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.8407566804189516"/>
+<rect x="1634.3" y="808.6" width="5.2" height="5.2" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.43186257593354893"/>
+<rect x="1606.4" y="826.5" width="4.7" height="4.7" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.35563787980373873"/>
+<rect x="1646.9" y="799.5" width="6.9" height="6.9" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.5676345601552065"/>
+<rect x="1634.1" y="803.7" width="7.9" height="7.9" rx="0" stroke="none" stroke-width="1" fill="#D98CA8" opacity="0.6043715115630468"/>
+<text x="1704.0" y="796.0" font-family="Inter" font-size="16" fill="#D98CA8" text-anchor="start" font-weight="700" letter-spacing="1.4" opacity="1">DEBRIS</text>
+<text x="1704.0" y="818.0" font-family="Inter" font-size="12" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">240 s dormant, or after senescence</text>
+<defs><marker id="am" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#D98CA8"/></marker></defs>
+<defs><marker id="ag" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#9AA3AF"/></marker></defs>
+<path d="M1640,672 L1640,746" stroke="#D98CA8" stroke-width="1.6" fill="none" opacity="1" marker-end="url(#am)"/>
+<path d="M1592,606 C1500,560 1500,300 1586,256" stroke="#9AA3AF" stroke-width="1.4" fill="none" opacity="1" stroke-dasharray="4 5" marker-end="url(#ag)"/>
+<text x="1490.0" y="430.0" font-family="Inter" font-size="12" fill="#9AA3AF" text-anchor="end" font-weight="600" letter-spacing="0" opacity="1">revived</text>
+<text x="80.0" y="1010.0" font-family="JetBrains Mono" font-size="11" fill="#7C8796" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">Ribbon widths are schematic. Stage heights, rates and thresholds are taken from the code.</text>
+</svg>

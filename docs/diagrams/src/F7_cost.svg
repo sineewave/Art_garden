@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" fill="#05070B"/>
+<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="gl2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter></defs>
+<text x="80.0" y="92.0" font-family="Inter Display" font-size="46" fill="#EEF3FA" text-anchor="start" font-weight="700" letter-spacing="-1" opacity="1">What breeding costs</text>
+<text x="82.0" y="124.0" font-family="Inter" font-size="17" fill="#8A95A5" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">Every generated image draws on electricity and water</text>
+<text x="1840.0" y="92.0" font-family="Inter" font-size="12" fill="#8A95A5" text-anchor="end" font-weight="400" letter-spacing="3" opacity="1">ATTENTION GARDEN · 06</text>
+<rect x="80.0" y="190.0" width="860.0" height="700.0" rx="20" stroke="#FFD27A" stroke-width="1.4" fill="#080B11" opacity="1"/>
+<rect x="80" y="190" width="860" height="700" rx="20" fill="none" stroke="#FFD27A" stroke-width="6" opacity=".14" filter="url(#gl2)"/>
+<text x="110.0" y="234.0" font-family="Inter" font-size="13" fill="#FFD27A" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ONE GENERATION</text>
+<text x="110.0" y="266.0" font-family="Inter Display" font-size="24" fill="#EEF3FA" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Energy per inference</text>
+<text x="120.0" y="360.0" font-family="Inter" font-size="16" fill="#EEF3FA" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">Text generation, mean</text>
+<rect x="120" y="376" width="6.0" height="34" rx="6" fill="#8A93A0" opacity=".9" filter="url(#gl)"/>
+<text x="140.0" y="400.0" font-family="Inter Display" font-size="22" fill="#8A93A0" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">0.047 Wh</text>
+<text x="120.0" y="490.0" font-family="Inter" font-size="16" fill="#EEF3FA" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">Image generation, mean</text>
+<rect x="120" y="506" width="176.7" height="34" rx="6" fill="#FFD27A" opacity=".9" filter="url(#gl)"/>
+<text x="310.7" y="530.0" font-family="Inter Display" font-size="22" fill="#FFD27A" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">2.9 Wh</text>
+<text x="120.0" y="620.0" font-family="Inter" font-size="16" fill="#EEF3FA" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">Most energy-hungry image model</text>
+<rect x="120" y="636" width="700.0" height="34" rx="6" fill="#D98CA8" opacity=".9" filter="url(#gl)"/>
+<text x="834.0" y="660.0" font-family="Inter Display" font-size="22" fill="#D98CA8" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">11.49 Wh</text>
+<text x="120.0" y="790.0" font-family="Inter Display" font-size="64" fill="#FFD27A" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">≈ 60×</text>
+<text x="340.0" y="756.0" font-family="Inter" font-size="16" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">an average image versus</text>
+<text x="340.0" y="780.0" font-family="Inter" font-size="16" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">an average text generation</text>
+<text x="120.0" y="862.0" font-family="JetBrains Mono" font-size="12" fill="#8A95A5" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">Luccioni, Jernite, Strubell · FAccT 2024</text>
+<rect x="1000.0" y="190.0" width="840.0" height="700.0" rx="20" stroke="#9B7BFF" stroke-width="1.4" fill="#080B11" opacity="1"/>
+<rect x="1000" y="190" width="840" height="700" rx="20" fill="none" stroke="#9B7BFF" stroke-width="6" opacity=".14" filter="url(#gl2)"/>
+<text x="1030.0" y="234.0" font-family="Inter" font-size="13" fill="#9B7BFF" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ALL DATA CENTRES</text>
+<text x="1030.0" y="266.0" font-family="Inter Display" font-size="24" fill="#EEF3FA" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">Electricity per year</text>
+<rect x="1160" y="614.3" width="150" height="175.7" rx="8" fill="#9B7BFF" opacity=".85" filter="url(#gl)"/>
+<text x="1235.0" y="596.3" font-family="Inter Display" font-size="26" fill="#EEF3FA" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">415 TWh</text>
+<text x="1235.0" y="820.0" font-family="Inter" font-size="15" fill="#8A95A5" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">2024</text>
+<rect x="1460.0" y="390.0" width="150.0" height="400.0" rx="8" stroke="#9B7BFF" stroke-width="2" fill="none" opacity="1" stroke-dasharray="8 6"/>
+<rect x="1460" y="390.0" width="150" height="400.0" rx="8" fill="#9B7BFF" opacity=".12"/>
+<text x="1535.0" y="372.0" font-family="Inter Display" font-size="26" fill="#9B7BFF" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">945 TWh</text>
+<text x="1535.0" y="820.0" font-family="Inter" font-size="15" fill="#8A95A5" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">2030 · projected</text>
+<line x1="1120.0" y1="790.0" x2="1660.0" y2="790.0" stroke="#2A3240" stroke-width="1.4" opacity="1"/>
+<text x="1040.0" y="862.0" font-family="JetBrains Mono" font-size="12" fill="#8A95A5" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">International Energy Agency · Energy and AI, 2025</text>
+<text x="1640.0" y="570.0" font-family="Inter" font-size="16" fill="#8A95A5" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">more than</text>
+<text x="1640.0" y="602.0" font-family="Inter Display" font-size="30" fill="#9B7BFF" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">doubled</text>
+<text x="80.0" y="960.0" font-family="JetBrains Mono" font-size="12" fill="#8A95A5" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">Published estimates, not measurements of this installation. Data centres also use water for cooling (Li et al., 2025).</text>
+</svg>

@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" fill="#05070B"/>
+<defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="gl2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter></defs>
+<defs><marker id="mg" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#FFD27A"/></marker></defs>
+<text x="80.0" y="92.0" font-family="Inter Display" font-size="46" fill="#EEF3FA" text-anchor="start" font-weight="700" letter-spacing="-1" opacity="1">Prompt reuse</text>
+<text x="82.0" y="128.0" font-family="Inter" font-size="22" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">A feed copies the item. Generation copies the recipe.</text>
+<text x="110.0" y="250.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ROUND 1</text>
+<rect x="110.0" y="270.0" width="500.0" height="112.0" rx="18" stroke="#5A6576" stroke-width="1.4" fill="#0A0E15" opacity="1"/>
+<text x="134.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
+<text x="158.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">cat</text>
+<text x="206.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">dancing</text>
+<text x="302.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">on</text>
+<text x="338.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
+<text x="362.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">rooftop,</text>
+<text x="470.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">neon</text>
+<text x="134.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">lights,</text>
+<text x="230.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">cinematic</text>
+<rect x="110.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#2b313a" opacity="1"/>
+<circle cx="144.0" cy="536.0" r="16.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="239.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#4a5462" opacity="1"/>
+<circle cx="309.0" cy="512.0" r="30.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="233" y="464" width="124" height="124" rx="11" fill="none" stroke="#FFD27A" stroke-width="2.6" filter="url(#gl)"/>
+<rect x="368.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#3b434e" opacity="1"/>
+<circle cx="418.0" cy="544.0" r="22.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="497.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#576374" opacity="1"/>
+<circle cx="573.0" cy="520.0" r="36.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<text x="295.0" y="452.0" font-family="JetBrains Mono" font-size="15" fill="#FFD27A" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">♥ most liked</text>
+<path d="M295.0,588 L295.0,610 Q295.0,622 307.0,622 L628,622 Q640,622 640,610 L640,338 Q640,326 652,326 L678,326" fill="none" stroke="#FFD27A" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#mg)"/>
+<text x="467.5" y="652.0" font-family="Inter" font-size="16" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">copy the liked prompt, tweak a few words</text>
+<text x="690.0" y="250.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ROUND 2</text>
+<rect x="690.0" y="270.0" width="500.0" height="112.0" rx="18" stroke="#5A6576" stroke-width="1.4" fill="#0A0E15" opacity="1"/>
+<text x="714.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
+<text x="738.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">cat</text>
+<text x="786.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">dancing</text>
+<text x="882.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">on</text>
+<text x="918.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
+<text x="942.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">rooftop,</text>
+<text x="1050.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">neon</text>
+<text x="714.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">lights,</text>
+<text x="810.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">cinematic,</text>
+<rect x="937.0" y="324" width="70.0" height="32" rx="7" fill="#FFD27A" opacity=".22"/>
+<text x="942.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">pixar</text>
+<rect x="1009.0" y="324" width="70.0" height="32" rx="7" fill="#FFD27A" opacity=".22"/>
+<text x="1014.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">style</text>
+<rect x="690.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#39404b" opacity="1"/>
+<circle cx="737.2" cy="530.0" r="22.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="819.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#454e5b" opacity="1"/>
+<circle cx="880.6" cy="520.4" r="27.6" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="813" y="464" width="124" height="124" rx="11" fill="none" stroke="#FFD27A" stroke-width="2.6" filter="url(#gl)"/>
+<rect x="948.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#3f4753" opacity="1"/>
+<circle cx="1001.6" cy="533.2" r="24.4" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1077.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#4a5462" opacity="1"/>
+<circle cx="1141.0" cy="523.6" r="30.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<text x="875.0" y="452.0" font-family="JetBrains Mono" font-size="15" fill="#FFD27A" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">♥ most liked</text>
+<path d="M875.0,588 L875.0,610 Q875.0,622 887.0,622 L1208,622 Q1220,622 1220,610 L1220,338 Q1220,326 1232,326 L1258,326" fill="none" stroke="#FFD27A" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#mg)"/>
+<text x="1047.5" y="652.0" font-family="Inter" font-size="16" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">copy the liked prompt, tweak a few words</text>
+<text x="1270.0" y="250.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ROUND 3</text>
+<rect x="1270.0" y="270.0" width="500.0" height="112.0" rx="18" stroke="#5A6576" stroke-width="1.4" fill="#0A0E15" opacity="1"/>
+<text x="1294.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
+<text x="1318.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">cat</text>
+<text x="1366.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">dancing</text>
+<rect x="1457.0" y="288" width="34.0" height="32" rx="7" fill="#FFD27A" opacity=".22"/>
+<text x="1462.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">in</text>
+<rect x="1493.0" y="288" width="46.0" height="32" rx="7" fill="#FFD27A" opacity=".22"/>
+<text x="1498.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">the</text>
+<rect x="1541.0" y="288" width="70.0" height="32" rx="7" fill="#FFD27A" opacity=".22"/>
+<text x="1546.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">rain,</text>
+<text x="1618.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">neon</text>
+<text x="1294.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">lights,</text>
+<text x="1390.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">pixar</text>
+<text x="1462.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">style,</text>
+<rect x="1541.0" y="324" width="34.0" height="32" rx="7" fill="#FFD27A" opacity=".22"/>
+<text x="1546.0" y="348.0" font-family="JetBrains Mono" font-size="20" fill="#FFD27A" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">8k</text>
+<rect x="1270.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#3f4854" opacity="1"/>
+<circle cx="1323.8" cy="527.0" r="25.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1399.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#424b58" opacity="1"/>
+<circle cx="1456.4" cy="524.6" r="26.4" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1393" y="464" width="124" height="124" rx="11" fill="none" stroke="#FFD27A" stroke-width="2.6" filter="url(#gl)"/>
+<rect x="1528.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#414956" opacity="1"/>
+<circle cx="1583.4" cy="527.8" r="25.6" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1657.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#434d5a" opacity="1"/>
+<circle cx="1715.0" cy="525.4" r="27.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<text x="1455.0" y="452.0" font-family="JetBrains Mono" font-size="15" fill="#FFD27A" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">♥ most liked</text>
+<rect x="110.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#333a44" opacity="1"/>
+<circle cx="124.5" cy="811.2" r="4.9" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="150.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#2b313a" opacity="1"/>
+<circle cx="171.6" cy="820.0" r="7.6" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="190.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#4e5968" opacity="1"/>
+<circle cx="206.5" cy="813.1" r="6.2" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="230.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#323943" opacity="1"/>
+<circle cx="242.5" cy="821.3" r="5.3" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="270.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#505b6a" opacity="1"/>
+<circle cx="289.6" cy="812.4" r="10.8" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="310.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#39414c" opacity="1"/>
+<circle cx="328.6" cy="820.0" r="9.3" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="350.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#515c6b" opacity="1"/>
+<circle cx="367.1" cy="817.8" r="5.5" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="390.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#424a57" opacity="1"/>
+<circle cx="405.7" cy="811.8" r="6.2" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="430.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#515c6c" opacity="1"/>
+<circle cx="446.5" cy="814.1" r="10.6" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="470.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#4f5a69" opacity="1"/>
+<circle cx="489.5" cy="819.2" r="8.8" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="510.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#424b57" opacity="1"/>
+<circle cx="526.9" cy="815.4" r="7.8" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="550.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#373f49" opacity="1"/>
+<circle cx="568.5" cy="812.3" r="7.3" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="590.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#343c46" opacity="1"/>
+<circle cx="604.3" cy="816.3" r="8.9" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="630.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414956" opacity="1"/>
+<circle cx="649.5" cy="813.9" r="7.5" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="670.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#3f4854" opacity="1"/>
+<circle cx="686.9" cy="814.6" r="7.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="710.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#3e4752" opacity="1"/>
+<circle cx="724.9" cy="816.3" r="9.2" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="750.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#495462" opacity="1"/>
+<circle cx="763.6" cy="814.5" r="6.8" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="790.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#46505d" opacity="1"/>
+<circle cx="804.7" cy="815.2" r="8.5" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="830.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#3c4450" opacity="1"/>
+<circle cx="844.0" cy="816.8" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="870.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#47515e" opacity="1"/>
+<circle cx="886.9" cy="817.7" r="9.2" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="910.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#3b444f" opacity="1"/>
+<circle cx="927.5" cy="816.9" r="7.7" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="950.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#404956" opacity="1"/>
+<circle cx="966.3" cy="816.9" r="8.9" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="990.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#404854" opacity="1"/>
+<circle cx="1005.9" cy="815.2" r="7.6" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1030.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414956" opacity="1"/>
+<circle cx="1045.7" cy="815.2" r="8.5" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1070.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#3f4854" opacity="1"/>
+<circle cx="1086.3" cy="815.9" r="7.8" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1110.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a56" opacity="1"/>
+<circle cx="1126.3" cy="816.0" r="7.9" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1150.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1166.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1190.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1206.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1230.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1246.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1270.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1286.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1310.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1326.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1350.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1366.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1390.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1406.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1430.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1446.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1470.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1486.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1510.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1526.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1550.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1566.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1590.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1606.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1630.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1646.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1670.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1686.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1710.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1726.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<rect x="1750.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
+<circle cx="1766.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
+<text x="110.0" y="876.0" font-family="Inter" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">every round shapes the next</text>
+<text x="1790.0" y="876.0" font-family="Inter" font-size="20" fill="#EEF3FA" text-anchor="end" font-weight="700" letter-spacing="0" opacity="1">a family of look-alikes</text>
+<ellipse cx="1446.0" cy="816.0" rx="300.0" ry="40.0" transform="rotate(0.0 1446.0 816.0)" stroke="#8A95A5" stroke-width="1.4" fill="none" opacity="1" stroke-dasharray="4 6"/>
+<text x="80.0" y="1020.0" font-family="JetBrains Mono" font-size="13" fill="#8A95A5" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">Illustrative prompts in the style shared on open model hubs; to be replaced with real prompt chains.</text>
+</svg>
