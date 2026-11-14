@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" fill="#05070B"/>
 <defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="gl2" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10"/></filter></defs>
 <defs><marker id="mg" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#FFD27A"/></marker></defs>
-<g transform="translate(-40,-70) scale(1.05)">
+<g transform="translate(30,-20) scale(1.0)">
 <text x="110.0" y="250.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ROUND 1</text>
 <rect x="110.0" y="270.0" width="500.0" height="112.0" rx="18" stroke="#5A6576" stroke-width="1.4" fill="#0A0E15" opacity="1"/>
 <text x="134.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
@@ -24,7 +24,7 @@
 <circle cx="573.0" cy="520.0" r="36.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
 <text x="295.0" y="452.0" font-family="JetBrains Mono" font-size="15" fill="#FFD27A" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">♥ most liked</text>
 <path d="M295.0,588 L295.0,610 Q295.0,622 307.0,622 L628,622 Q640,622 640,610 L640,338 Q640,326 652,326 L678,326" fill="none" stroke="#FFD27A" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#mg)"/>
-<text x="467.5" y="652.0" font-family="Inter" font-size="16" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">copy + tweak</text>
+<text x="467.5" y="652.0" font-family="Inter" font-size="16" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">copy the liked prompt, tweak a few words</text>
 <text x="690.0" y="250.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ROUND 2</text>
 <rect x="690.0" y="270.0" width="500.0" height="112.0" rx="18" stroke="#5A6576" stroke-width="1.4" fill="#0A0E15" opacity="1"/>
 <text x="714.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
@@ -51,7 +51,7 @@
 <circle cx="1141.0" cy="523.6" r="30.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
 <text x="875.0" y="452.0" font-family="JetBrains Mono" font-size="15" fill="#FFD27A" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">♥ most liked</text>
 <path d="M875.0,588 L875.0,610 Q875.0,622 887.0,622 L1208,622 Q1220,622 1220,610 L1220,338 Q1220,326 1232,326 L1258,326" fill="none" stroke="#FFD27A" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#mg)"/>
-<text x="1047.5" y="652.0" font-family="Inter" font-size="16" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">copy + tweak</text>
+<text x="1047.5" y="652.0" font-family="Inter" font-size="16" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">copy the liked prompt, tweak a few words</text>
 <text x="1270.0" y="250.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="2" opacity="1">ROUND 3</text>
 <rect x="1270.0" y="270.0" width="500.0" height="112.0" rx="18" stroke="#5A6576" stroke-width="1.4" fill="#0A0E15" opacity="1"/>
 <text x="1294.0" y="312.0" font-family="JetBrains Mono" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="400" letter-spacing="0" opacity="1">a</text>
@@ -79,6 +79,8 @@
 <rect x="1657.0" y="470.0" width="112.0" height="112.0" rx="8" stroke="none" stroke-width="1" fill="#434d5a" opacity="1"/>
 <circle cx="1715.0" cy="525.4" r="27.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
 <text x="1455.0" y="452.0" font-family="JetBrains Mono" font-size="15" fill="#FFD27A" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">♥ most liked</text>
+<text x="86.0" y="330.0" font-family="Inter" font-size="13" fill="#8A95A5" text-anchor="end" font-weight="700" letter-spacing="2" opacity="1">PROMPT</text>
+<text x="86.0" y="531.0" font-family="Inter" font-size="13" fill="#8A95A5" text-anchor="end" font-weight="700" letter-spacing="2" opacity="1">IMAGES</text>
 <rect x="110.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#333a44" opacity="1"/>
 <circle cx="124.5" cy="811.2" r="4.9" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
 <rect x="150.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#2b313a" opacity="1"/>
@@ -163,7 +165,8 @@
 <circle cx="1726.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
 <rect x="1750.0" y="800.0" width="32.0" height="32.0" rx="4" stroke="none" stroke-width="1" fill="#414a57" opacity="1"/>
 <circle cx="1766.0" cy="816.0" r="8.0" stroke="none" stroke-width="0" fill="#DCE3EC" opacity="0.85"/>
-<text x="1790.0" y="876.0" font-family="Inter" font-size="20" fill="#EEF3FA" text-anchor="end" font-weight="700" letter-spacing="0" opacity="1">a family</text>
+<text x="110.0" y="876.0" font-family="Inter" font-size="20" fill="#EEF3FA" text-anchor="start" font-weight="600" letter-spacing="0" opacity="1">every round shapes the next</text>
+<text x="1790.0" y="876.0" font-family="Inter" font-size="20" fill="#EEF3FA" text-anchor="end" font-weight="700" letter-spacing="0" opacity="1">a family of look-alikes</text>
 <ellipse cx="1446.0" cy="816.0" rx="300.0" ry="40.0" transform="rotate(0.0 1446.0 816.0)" stroke="#8A95A5" stroke-width="1.4" fill="none" opacity="1" stroke-dasharray="4 6"/>
 </g>
 </svg>

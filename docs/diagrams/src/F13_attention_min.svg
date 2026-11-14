@@ -35,7 +35,7 @@
 <text x="650.0" y="405.0" font-family="Inter" font-size="18" fill="#8A95A5" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">asleep 8 h</text>
 <text x="165.0" y="405.0" font-family="Inter" font-size="18" fill="#FFD27A" text-anchor="end" font-weight="700" letter-spacing="0" opacity="1">awake 16 h</text>
 <text x="420.0" y="880.0" font-family="Inter Display" font-size="56" fill="#FFD27A" text-anchor="middle" font-weight="700" letter-spacing="0" opacity="1">19,200</text>
-<text x="420.0" y="912.0" font-family="Inter" font-size="18" fill="#8A95A5" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">seen</text>
+<text x="420.0" y="912.0" font-family="Inter" font-size="18" fill="#8A95A5" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">images one person could see</text>
 <rect x="820.0" y="220.0" width="12.0" height="12.0" rx="0" stroke="none" stroke-width="1" fill="#D9A23F" opacity="0.33211508412305873"/>
 <rect x="835.0" y="220.0" width="12.0" height="12.0" rx="0" stroke="none" stroke-width="1" fill="#5D8FB8" opacity="0.3389479582074034"/>
 <rect x="850.0" y="220.0" width="12.0" height="12.0" rx="0" stroke="none" stroke-width="1" fill="#4E5DA8" opacity="0.38610846072779337"/>
@@ -2757,8 +2757,11 @@
 <rect x="1810.0" y="805.0" width="12.0" height="12.0" rx="0" stroke="none" stroke-width="1" fill="#A44E7E" opacity="0.6716285214958014"/>
 <rect x="1825.0" y="805.0" width="12.0" height="12.0" rx="0" stroke="none" stroke-width="1" fill="#A44E7E" opacity="0.3824875868929789"/>
 <rect x="816" y="216" width="94.0" height="604.0" fill="none" stroke="#FFD27A" stroke-width="3" filter="url(#gl)"/>
+<text x="820.0" y="202.0" font-family="Inter" font-size="18" fill="#FFD27A" text-anchor="start" font-weight="700" letter-spacing="0" opacity="1">what one person can see</text>
 <rect x="820" y="760.0" width="1020" height="60" fill="url(#fade)"/>
 <text x="1840.0" y="890.0" font-family="Inter Display" font-size="56" fill="#EEF3FA" text-anchor="end" font-weight="700" letter-spacing="0" opacity="1">254,000</text>
-<text x="1840.0" y="922.0" font-family="Inter" font-size="18" fill="#8A95A5" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">made</text>
+<text x="1840.0" y="922.0" font-family="Inter" font-size="18" fill="#8A95A5" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">images made by this installation</text>
+<text x="420.0" y="936.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="middle" font-weight="400" letter-spacing="0" opacity="1">16 waking hours · 3 s per image</text>
+<text x="1840.0" y="946.0" font-family="Inter" font-size="14" fill="#8A95A5" text-anchor="end" font-weight="400" letter-spacing="0" opacity="1">in one day · one every 0.34 s</text>
 </g>
 </svg>

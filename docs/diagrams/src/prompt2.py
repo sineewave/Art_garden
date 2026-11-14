@@ -18,7 +18,7 @@ def T(x,y,t,size=14,c=W_,**k): g.text(x,y,t,size,c,fam=k.pop('fam','Inter'),**k)
 if not MIN:
     T(80,92,'Prompt reuse',46,W_,fam='Inter Display',weight=700,ls=-1)
     T(82,128,'A feed copies the item. Generation copies the recipe.',22,GOLD,weight=600)
-else: g.a('<g transform="translate(-40,-70) scale(1.05)">')
+else: g.a('<g transform="translate(30,-20) scale(1.0)">')
 prompts=[[('a',0),('cat',0),('dancing',0),('on',0),('a',0),('rooftop,',0),('neon',0),('lights,',0),('cinematic',0)],
          [('a',0),('cat',0),('dancing',0),('on',0),('a',0),('rooftop,',0),('neon',0),('lights,',0),('cinematic,',0),('pixar',1),('style',1)],
          [('a',0),('cat',0),('dancing',0),('in',1),('the',1),('rain,',1),('neon',0),('lights,',0),('pixar',0),('style,',0),('8k',1)]]
@@ -50,7 +50,10 @@ for r,pr in enumerate(prompts):
         d=(f'M{bx},{IY+TS+6} L{bx},{ly-12} Q{bx},{ly} {bx+12},{ly} L{gx-12},{ly} Q{gx},{ly} {gx},{ly-12} '
            f'L{gx},{PY+68} Q{gx},{PY+56} {gx+12},{PY+56} L{nx-12},{PY+56}')
         g.a(f'<path d="{d}" fill="none" stroke="{GOLD}" stroke-width="2.6" stroke-dasharray="7 6" marker-end="url(#mg)"/>')
-        g.text((bx+gx)/2,ly+30,'copy + tweak' if MIN else 'copy the liked prompt, tweak a few words',16,GOLD,anchor='middle',fam='Inter',weight=700)
+        g.text((bx+gx)/2,ly+30,'copy the liked prompt, tweak a few words',16,GOLD,anchor='middle',fam='Inter',weight=700)
+if MIN:
+    for lab,yy in (('PROMPT',PY+60),('IMAGES',IY+TS/2+5)):
+        g.text(X0-24,yy,lab,13,MU,anchor='end',fam='Inter',weight=700,ls=2)
 # family strip
 FY=800
 for k in range(42):
@@ -58,8 +61,8 @@ for k in range(42):
     g.rect(110+k*40,FY,32,32,fill=hsl(215,.14,l),rx=4)
     rr=random.uniform(4,13)*(1-mix)+8*mix; ox_=random.uniform(-7,7)*(1-mix); oy_=random.uniform(-7,7)*(1-mix)
     g.circ(126+k*40+ox_,FY+16+oy_,rr,'none',0,fill='#DCE3EC',op=.85)
-T(110,FY+76,'every round shapes the next',20,W_,weight=600) if not MIN else None
-T(1790,FY+76,'a family' if MIN else 'a family of look-alikes',20,W_,anchor='end',weight=700)
+T(110,FY+76,'every round shapes the next',20,W_,weight=600)
+T(1790,FY+76,'a family of look-alikes',20,W_,anchor='end',weight=700)
 g.ell(110+33*40+16,FY+16,300,40,0,'#8A95A5',1.4,dash='4 6')
 if MIN: g.a('</g>')
 else: g.text(80,1020,'Illustrative prompts in the style shared on open model hubs; to be replaced with real prompt chains.',13,MU,fam='JetBrains Mono')
@@ -87,7 +90,7 @@ T(cx,cy-20,'24',96,W_,anchor='middle',fam='Inter Display',weight=700)
 T(cx,cy+24,'hours in a day',20,MU,anchor='middle')
 T(cx+R*.92,cy-R*.62,'asleep 8 h',18,MU,weight=700); T(cx-R*1.02,cy-R*.62,'awake 16 h',18,GOLD,anchor='end',weight=700)
 T(cx,cy+R+70,'19,200',56,GOLD,anchor='middle',fam='Inter Display',weight=700)
-T(cx,cy+R+102,'seen' if MIN else 'images, if you did nothing but look, 3 s each',18 if MIN else 16,MU,anchor='middle')
+T(cx,cy+R+102,'images one person could see' if MIN else 'images, if you did nothing but look, 3 s each',18 if MIN else 16,MU,anchor='middle')
 # right: flood of tiles
 x0,y0,w,h=820,220,1020,640
 cols,rows=68,40; s=w/cols
@@ -99,10 +102,13 @@ for i in range(rows):
 # the portion one person can see (19,200 / 254,000 ≈ 7.6 %)
 frac=19200/254117; ncell=int(cols*rows*frac)
 g.a(f'<rect x="{x0-4}" y="{y0-4}" width="{(ncell//rows+1)*s+4:.1f}" height="{rows*s+4:.1f}" fill="none" stroke="{GOLD}" stroke-width="3" filter="url(#gl)"/>')
-T(x0,y0-18,'what one person can see',18,GOLD,weight=700) if not MIN else None
+T(x0,y0-18,'what one person can see',18,GOLD,weight=700)
 g.a(f'<rect x="{x0}" y="{y0+rows*s-60}" width="{w}" height="60" fill="url(#fade)"/>')
 T(x0+w,y0+rows*s+70,'254,000',56,W_,anchor='end',fam='Inter Display',weight=700)
-T(x0+w,y0+rows*s+102,'made' if MIN else 'images a day from this installation’s feed alone (one every 0.34 s)',18 if MIN else 16,MU,anchor='end')
-if MIN: g.a('</g>')
+T(x0+w,y0+rows*s+102,'images made by this installation' if MIN else 'images a day from this installation’s feed alone (one every 0.34 s)',18 if MIN else 16,MU,anchor='end')
+if MIN:
+    T(cx,cy+R+126,'16 waking hours · 3 s per image',14,MU,anchor='middle')
+    T(x0+w,y0+rows*s+126,'in one day · one every 0.34 s',14,MU,anchor='end')
+    g.a('</g>')
 else: g.text(80,1020,'Each square = about 94 images. Assumptions: 16 waking hours, 3 seconds per image, nothing else done all day.',13,MU,fam='JetBrains Mono')
 g.save(OUT+f'/F13_attention{SUF}.svg')
